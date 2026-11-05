@@ -14,8 +14,6 @@ _Basics of Information Systems (INFT3107) · KBTU · Group project · Topic #11 
 
 </div>
 
-![Catalog](docs/screenshots/catalog.png)
-
 ## Aim
 
 Build a web store where a driver selects their car and, within 3 clicks, finds and orders a part that is guaranteed to fit it.
@@ -33,30 +31,15 @@ Buying car parts online is risky: the same "brake pads" come in dozens of sizes,
 5. Global search across 3 entity types (parts, categories, car models)
 6. Full interface in **English and Russian**
 
-## Features & progress
-
-| # | Feature | Backend API | Frontend | Status |
-|---|---|:-:|:-:|---|
-| 1 | Product catalog + filters + sorting + pagination | ✅ | ✅ | Done (Week 10) |
-| 2 | "Fits my car" compatibility filter | ✅ | ✅ | Done (Week 10) |
-| 3 | Product details page | ✅ | ✅ | Done (Week 10) |
-| 4 | Global search (products, categories, cars) | ✅ | ✅ | Done (Week 10) |
-| 5 | Multilanguage EN / RU | — | ✅ | Done (Week 10) |
-| 5a | Dark / light theme (remembered per browser) | — | ✅ | Done (Week 10) |
-| 6 | Registration & login (JWT) | ✅ | ⏳ | Week 11 |
-| 7 | Cart | ✅ | ⏳ | Week 11 |
-| 8 | Checkout & order history | ✅ | ⏳ | Week 11 |
-| 9 | Admin panel (CRUD, role-based access) | ✅ | ⏳ | Week 12 |
-| 10 | User profile / "My garage" | ⚠️ partial | ⏳ | Week 13 |
-
 ## Team
 
-| Member | Role | Responsibility | GitHub |
-|---|---|---|---|
-| **Lim** _(full name)_ | Application & Development | Backend (Django REST API), frontend (Angular), integration, GitHub | [@adjansxzd](https://github.com/adjansxzd) |
-| _Name_ | _Role_ | _e.g. Business analysis, SWOT, competitors_ | `@username` |
-| _Name_ | _Role_ | _e.g. Database design, ER diagram_ | `@username` |
-| _Name_ | _Role_ | _e.g. UI/UX, testing, presentation_ | `@username` |
+| Student ID | Name | Role |
+|---|---|---|
+| 24B031667 | Bazarbayeva Aidana | Systems Analysis & Requirements |
+| 24B032154 | Konakbayev Daulet | Data & Database |
+| 24B031630 | Altynbekova Aruzhan | Testing, Analytics & Integration |
+| 24B031632 | Alzhanov Adilzhan | Application & Development |
+| 24B031995 | Salauatov Anuar | Architecture & Security |
 
 ## Architecture
 
@@ -89,7 +72,7 @@ bis-autoshop/
 │       ├── components/      header, product card
 │       ├── pages/           catalog, product detail, search
 │       └── shared/          pipes (translate, price), icons
-└── docs/                    API reference, AI usage log, screenshots
+└── docs/                    API reference, AI usage log
 ```
 
 ## How to run
@@ -144,12 +127,6 @@ cd backend
 python manage.py test
 ```
 10 automated API tests cover: health check, public catalog, filters ("Fits my car"), 3-entity search, registration, **role access** (a customer can't create products, a manager can), **cart → order** flow with stock reduction, and error cases (more than stock, empty cart checkout).
-
-## Screenshots
-
-| Russian UI + "Fits my car" | Light theme | Search |
-|---|---|---|
-| ![](docs/screenshots/catalog-ru-camry.png) | ![](docs/screenshots/light.png) | ![](docs/screenshots/search.png) |
 
 ## AI usage
 
