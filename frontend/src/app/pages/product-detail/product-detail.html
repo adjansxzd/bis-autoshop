@@ -1,0 +1,42 @@
+<div class="wrap">
+  <a routerLink="/" class="back">← {{ 'product.back' | t }}</a>
+
+  @if (error()) {
+    <div class="state">{{ 'catalog.error' | t }}</div>
+  } @else if (product(); as p) {
+    <article class="detail">
+      <div class="visual">
+        <app-part-icon [name]="p.category.icon" [size]="120" />
+      </div>
+
+      <div class="info">
+        <span class="sku">SKU {{ p.sku }}</span>
+        <h1>{{ p | loc: 'name' }}</h1>
+        <p class="desc">{{ p | loc: 'description' }}</p>
+
+        <dl class="specs">
+          <div><dt>{{ 'product.brand' | t }}</dt><dd>{{ p.brand.name }} · {{ p.brand.country }}</dd></div>
+          <div><dt>{{ 'product.category' | t }}</dt><dd>{{ p.category | loc: 'name' }}</dd></div>
+          <div>
+            <dt>{{ p.in_stock ? ('product.in_stock' | t) : ('product.out_of_stock' | t) }}</dt>
+            <dd [class.out]="!p.in_stock">{{ p.stock }} {{ 'product.pcs' | t }}</dd>
+          </div>
+        </dl>
+
+        <div class="buy">
+          <span class="price">{{ p.price | kzt }}</span>
+          <button disabled [title]="'Cart: POST /api/cart/items/ — UI in the next sprint'">{{ 'product.add_to_cart' | t }}</button>
+        </div>
+
+        <h4>{{ 'product.fits' | t }}</h4>
+        <ul class="cars">
+          @for (car of p.compatible_cars; track car.id) {
+            <li>{{ car.label }}</li>
+          }
+        </ul>
+      </div>
+    </article>
+  } @else {
+    <div class="state">{{ 'catalog.loading' | t }}</div>
+  }
+</div>

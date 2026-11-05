@@ -1,0 +1,93 @@
+<section class="hero">
+  <div class="hero-text">
+    <span class="eyebrow">// {{ 'nav.catalog' | t }}</span>
+    <h1>{{ 'hero.title' | t }}</h1>
+    <p>{{ 'hero.sub' | t }}</p>
+  </div>
+
+  <!-- "Fits my car" — the main idea of our shop -->
+  <label class="garage">
+    <span class="garage-label">{{ 'filter.my_car' | t }}</span>
+    <select [(ngModel)]="filters.car" (ngModelChange)="apply()">
+      <option [ngValue]="null">{{ 'filter.any_car' | t }}</option>
+      @for (car of cars(); track car.id) {
+        <option [ngValue]="car.id">{{ car.label }}</option>
+      }
+    </select>
+  </label>
+</section>
+
+<div class="layout">
+  <aside class="filters">
+    <h4>{{ 'filter.categories' | t }}</h4>
+    <ul class="cats">
+      <li>
+        <button [class.active]="!filters.category" (click)="pickCategory('')">
+          <app-part-icon name="star" [size]="18" /> {{ 'filter.all' | t }}
+        </button>
+      </li>
+      @for (c of categories(); track c.id) {
+        <li>
+          <button [class.active]="filters.category === c.slug" (click)="pickCategory(c.slug)">
+            <app-part-icon [name]="c.icon" [size]="18" />
+            <span>{{ c | loc: 'name' }}</span>
+            <em>{{ c.product_count }}</em>
+          </button>
+        </li>
+      }
+    </ul>
+
+    <h4>{{ 'filter.brand' | t }}</h4>
+    <select [(ngModel)]="filters.brand" (ngModelChange)="apply()">
+      <option [ngValue]="null">{{ 'filter.any_brand' | t }}</option>
+      @for (b of brands(); track b.id) {
+        <option [ngValue]="b.id">{{ b.name }}</option>
+      }
+    </select>
+
+    <label class="check">
+      <input type="checkbox" [(ngModel)]="filters.in_stock" (ngModelChange)="apply()" />
+      {{ 'filter.in_stock' | t }}
+    </label>
+
+    <button class="reset" (click)="reset()">{{ 'filter.reset' | t }}</button>
+  </aside>
+
+  <main>
+    <div class="toolbar">
+      <span class="count"><b>{{ total() }}</b> {{ 'catalog.found' | t }}
+        @if (selectedCar(); as car) { · <span class="tag">{{ car.label }}</span> }
+      </span>
+      <label class="sort">
+        {{ 'sort.label' | t }}
+        <select [(ngModel)]="filters.ordering" (ngModelChange)="apply()">
+          <option value="-created_at">{{ 'sort.new' | t }}</option>
+          <option value="price">{{ 'sort.price_asc' | t }}</option>
+          <option value="-price">{{ 'sort.price_desc' | t }}</option>
+        </select>
+      </label>
+    </div>
+
+    @if (error()) {
+      <div class="state error">{{ 'catalog.error' | t }}</div>
+    } @else if (loading() && products().length === 0) {
+      <div class="state">{{ 'catalog.loading' | t }}</div>
+    } @else if (products().length === 0) {
+      <div class="state">{{ 'catalog.empty' | t }}</div>
+    } @else {
+      <div class="grid" [class.dim]="loading()">
+        @for (p of products(); track p.id) {
+          <app-product-card [product]="p" />
+        }
+      </div>
+
+      @if (totalPages() > 1) {
+        <nav class="pager">
+          <button [disabled]="filters.page === 1" (click)="goToPage(filters.page! - 1)">← {{ 'page.prev' | t }}</button>
+          <span>{{ filters.page }} / {{ totalPages() }}</span>
+          <button [disabled]="filters.page === totalPages()" (click)="goToPage(filters.page! + 1)">{{ 'page.next' | t }} →</button>
+        </nav>
+      }
+    }
+  </main>
+</div>

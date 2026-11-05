@@ -1,0 +1,46 @@
+<div class="wrap">
+  <h1>{{ 'search.title' | t }} <span>“{{ q() }}”</span></h1>
+
+  @if ((q() || '').trim().length < 2) {
+    <p class="muted">{{ 'search.min' | t }}</p>
+  } @else if (result(); as r) {
+    @if (isEmpty(r)) {
+      <p class="muted">{{ 'search.nothing' | t }}</p>
+    }
+
+    @if (r.categories.length) {
+      <section>
+        <h4>{{ 'search.categories' | t }} <em>{{ r.categories.length }}</em></h4>
+        <div class="chips">
+          @for (c of r.categories; track c.id) {
+            <a class="chip" routerLink="/" [queryParams]="{}"><app-part-icon [name]="c.icon" [size]="16" /> {{ c | loc: 'name' }}</a>
+          }
+        </div>
+      </section>
+    }
+
+    @if (r.cars.length) {
+      <section>
+        <h4>{{ 'search.cars' | t }} <em>{{ r.cars.length }}</em></h4>
+        <div class="chips">
+          @for (car of r.cars; track car.id) {
+            <span class="chip">{{ car.label }}</span>
+          }
+        </div>
+      </section>
+    }
+
+    @if (r.products.length) {
+      <section>
+        <h4>{{ 'search.products' | t }} <em>{{ r.products.length }}</em></h4>
+        <div class="grid">
+          @for (p of r.products; track p.id) {
+            <app-product-card [product]="p" />
+          }
+        </div>
+      </section>
+    }
+  } @else if (loading()) {
+    <p class="muted">{{ 'catalog.loading' | t }}</p>
+  }
+</div>

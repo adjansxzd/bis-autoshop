@@ -1,0 +1,45 @@
+.bar {
+  position: sticky; top: 0; z-index: 10;
+  display: flex; align-items: center; gap: 24px;
+  padding: 14px 32px;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line);
+}
+.logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
+.logo-mark {
+  font-family: var(--mono); font-size: 12px; font-weight: 700; letter-spacing: .08em;
+  background: var(--accent); color: #111; padding: 4px 6px; border-radius: 3px;
+}
+.logo-word { font-family: var(--display); font-size: 24px; letter-spacing: .04em; font-weight: 600; b { color: var(--accent); font-weight: 700; } }
+
+.search {
+  flex: 1; max-width: 560px; display: flex; align-items: center; gap: 10px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 0 14px;
+  color: var(--muted);
+  &:focus-within { border-color: var(--accent); color: var(--text); }
+  input { flex: 1; background: none; border: 0; outline: 0; color: var(--text); font: inherit; padding: 11px 0; }
+}
+
+.right { margin-left: auto; display: flex; align-items: center; gap: 18px; }
+.api {
+  display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11px;
+  text-transform: uppercase; letter-spacing: .06em; color: var(--muted);
+  i { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+  &.on i { background: var(--ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 25%, transparent); }
+  &.off { color: var(--danger); i { background: var(--danger); } }
+}
+.lang {
+  display: flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden;
+  button {
+    background: none; border: 0; color: var(--muted); font-family: var(--mono); font-size: 12px; font-weight: 600;
+    padding: 7px 11px; cursor: pointer;
+    &.active { background: var(--accent); color: #111; }
+  }
+}
+
+@media (max-width: 760px) {
+  .bar { flex-wrap: wrap; padding: 12px 16px; gap: 12px; }
+  .search { order: 3; flex-basis: 100%; max-width: none; }
+  .api { display: none; }
+}
