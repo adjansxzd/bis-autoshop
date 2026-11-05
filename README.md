@@ -52,7 +52,7 @@ Buying car parts online is risky: the same "brake pads" come in dozens of sizes,
 
 | Member | Role | Responsibility | GitHub |
 |---|---|---|---|
-| **Lim** _(full name)_ | Application & Development | Backend (Django REST API), frontend (Angular), integration, GitHub | `@username` |
+| **Lim** _(full name)_ | Application & Development | Backend (Django REST API), frontend (Angular), integration, GitHub | [@adjansxzd](https://github.com/adjansxzd) |
 | _Name_ | _Role_ | _e.g. Business analysis, SWOT, competitors_ | `@username` |
 | _Name_ | _Role_ | _e.g. Database design, ER diagram_ | `@username` |
 | _Name_ | _Role_ | _e.g. UI/UX, testing, presentation_ | `@username` |
