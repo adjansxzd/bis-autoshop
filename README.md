@@ -42,6 +42,7 @@ Buying car parts online is risky: the same "brake pads" come in dozens of sizes,
 | 3 | Product details page | ✅ | ✅ | Done (Week 10) |
 | 4 | Global search (products, categories, cars) | ✅ | ✅ | Done (Week 10) |
 | 5 | Multilanguage EN / RU | — | ✅ | Done (Week 10) |
+| 5a | Dark / light theme (remembered per browser) | — | ✅ | Done (Week 10) |
 | 6 | Registration & login (JWT) | ✅ | ⏳ | Week 11 |
 | 7 | Cart | ✅ | ⏳ | Week 11 |
 | 8 | Checkout & order history | ✅ | ⏳ | Week 11 |
@@ -84,7 +85,7 @@ bis-autoshop/
 │   └── orders/              cart, checkout, orders + API tests
 ├── frontend/                Angular app
 │   └── src/app/
-│       ├── core/            ApiService (all HTTP calls), models, i18n service
+│       ├── core/            ApiService (all HTTP calls), models, i18n + theme services
 │       ├── components/      header, product card
 │       ├── pages/           catalog, product detail, search
 │       └── shared/          pipes (translate, price), icons
@@ -146,9 +147,9 @@ python manage.py test
 
 ## Screenshots
 
-| Russian UI + "Fits my car" | Product page | Search |
+| Russian UI + "Fits my car" | Light theme | Search |
 |---|---|---|
-| ![](docs/screenshots/catalog-ru-camry.png) | ![](docs/screenshots/detail.png) | ![](docs/screenshots/search.png) |
+| ![](docs/screenshots/catalog-ru-camry.png) | ![](docs/screenshots/light.png) | ![](docs/screenshots/search.png) |
 
 ## AI usage
 

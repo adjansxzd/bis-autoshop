@@ -4,6 +4,7 @@ import { Router, RouterLink } from '@angular/router';
 
 import { ApiService } from '../../core/api.service';
 import { I18nService, Lang } from '../../core/i18n.service';
+import { ThemeService } from '../../core/theme.service';
 import { TPipe } from '../../shared/t.pipe';
 
 @Component({
@@ -16,6 +17,7 @@ export class Header implements OnInit {
   private api = inject(ApiService);
   private router = inject(Router);
   i18n = inject(I18nService);
+  theme = inject(ThemeService);
 
   apiOnline = signal<boolean | null>(null); // null = checking
   query = '';

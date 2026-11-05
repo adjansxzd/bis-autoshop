@@ -6,6 +6,7 @@ from rest_framework import serializers
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from django.views.generic import RedirectView
 
 
 @extend_schema(responses=inline_serializer("Health", {"status": serializers.CharField(), "service": serializers.CharField()}))
@@ -17,6 +18,7 @@ def health(request):
 
 
 urlpatterns = [
+    path("", RedirectView.as_view(url="/api/docs/", permanent=False)),
     path("admin/", admin.site.urls),
     path("api/health/", health),
     path("api/auth/", include("accounts.urls")),

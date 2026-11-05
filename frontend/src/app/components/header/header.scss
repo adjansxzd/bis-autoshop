@@ -29,6 +29,11 @@
   &.on i { background: var(--ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 25%, transparent); }
   &.off { color: var(--danger); i { background: var(--danger); } }
 }
+.theme {
+  display: grid; place-items: center; width: 36px; height: 34px;
+  background: none; border: 1px solid var(--line); border-radius: 6px; color: var(--text); cursor: pointer;
+  &:hover { border-color: var(--accent); color: var(--accent); }
+}
 .lang {
   display: flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden;
   button {

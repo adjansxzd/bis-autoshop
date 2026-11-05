@@ -6,6 +6,8 @@ export type Lang = 'en' | 'ru';
 const DICT: Record<string, Record<Lang, string>> = {
   'nav.catalog': { en: 'Catalog', ru: 'Каталог' },
   'nav.search_placeholder': { en: 'Search parts, brands, cars…', ru: 'Поиск деталей, брендов, авто…' },
+  'theme.to_light': { en: 'Switch to light theme', ru: 'Светлая тема' },
+  'theme.to_dark': { en: 'Switch to dark theme', ru: 'Тёмная тема' },
   'api.online': { en: 'API connected', ru: 'API подключен' },
   'api.offline': { en: 'API offline', ru: 'API недоступен' },
   'hero.title': { en: 'Parts that fit. First time.', ru: 'Детали, которые подходят. С первого раза.' },

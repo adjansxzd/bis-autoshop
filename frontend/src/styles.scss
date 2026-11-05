@@ -9,7 +9,7 @@
 @import '@fontsource/jetbrains-mono/600.css';
 @import '@fontsource/jetbrains-mono/700.css';
 
-/* Global design tokens — dark "garage / spec sheet" look */
+/* Global design tokens. Dark theme is the default; light theme overrides below. */
 :root {
   --bg: #0f1012;
   --panel: #17191c;
@@ -25,6 +25,22 @@
   --mono: 'JetBrains Mono', ui-monospace, monospace;
   color-scheme: dark;
 }
+
+/* Light theme — switched by ThemeService (<html data-theme="light">) */
+:root[data-theme='light'] {
+  --bg: #f4f2ed;
+  --panel: #ffffff;
+  --panel-2: #ece9e2;
+  --line: #dcd8cf;
+  --text: #18191b;
+  --muted: #62666c;
+  --accent: #c27a00;   /* darker amber so text stays readable on white */
+  --ok: #1d8656;
+  --danger: #cf3426;
+  color-scheme: light;
+}
+
+body { transition: background-color .2s, color .2s; }
 * { box-sizing: border-box; }
 html, body { margin: 0; }
 body { background: var(--bg); color: var(--text); font-family: var(--body); font-size: 15px; -webkit-font-smoothing: antialiased; }
