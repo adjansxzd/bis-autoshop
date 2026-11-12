@@ -22,6 +22,18 @@ class CartItemSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Quantity must be at least 1.")
         return value
 
+    def validate(self, attrs):
+        """Stock limit: you can never have more of a product in the cart than the shop has."""
+        product = attrs.get("product") or getattr(self.instance, "product", None)
+        quantity = attrs.get("quantity")
+        if product is not None:
+            if product.stock == 0:
+                raise serializers.ValidationError({"quantity": "This product is out of stock."})
+            # on update (PATCH) the new quantity replaces the old one
+            if self.instance is not None and quantity is not None and quantity > product.stock:
+                raise serializers.ValidationError({"quantity": f"Only {product.stock} in stock."})
+        return attrs
+
 
 class CartSerializer(serializers.ModelSerializer):
     items = CartItemSerializer(many=True, read_only=True)

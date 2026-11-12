@@ -1,31 +1,60 @@
-<header class="bar">
-  <a routerLink="/" class="logo" aria-label="BIS AutoShop home">
-    <span class="logo-mark">BIS</span><span class="logo-word">AUTO<b>SHOP</b></span>
-  </a>
+<div class="api-strip" [class.off]="apiOnline() === false" [title]="'GET /api/health/'">
+  <i></i>{{ apiOnline() === false ? ('api.offline' | t) : ('api.online' | t) }}
+</div>
+<header class="top">
+  <div class="container row">
+    <a routerLink="/" class="logo" aria-label="BIS AutoShop home">
+      <span class="mark">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/></svg>
+      </span>
+      <span class="word">Auto<b>Shop</b></span>
+    </a>
 
-  <form class="search" (ngSubmit)="search()" role="search">
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-    <input name="q" [(ngModel)]="query" [placeholder]="'nav.search_placeholder' | t" autocomplete="off" />
-  </form>
+    <form class="search" (ngSubmit)="search()" role="search">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input name="q" [(ngModel)]="query" [placeholder]="'nav.search_placeholder' | t" autocomplete="off" />
+    </form>
 
-  <div class="right">
-    <span class="api" [class.on]="apiOnline() === true" [class.off]="apiOnline() === false" [title]="'GET /api/health/'">
-      <i></i>{{ apiOnline() === false ? ('api.offline' | t) : ('api.online' | t) }}
-    </span>
-    <button type="button" class="theme" (click)="theme.toggle()"
-            [title]="theme.theme() === 'dark' ? ('theme.to_light' | t) : ('theme.to_dark' | t)"
-            [attr.aria-label]="theme.theme() === 'dark' ? ('theme.to_light' | t) : ('theme.to_dark' | t)">
-      @if (theme.theme() === 'dark') {
-        <!-- sun: click to go light -->
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+    <nav class="actions">
+      <a routerLink="/" class="garage" [class.set]="garage.car()" [title]="'ymm.saved' | t">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17h14M6 17l1.5-6h9L18 17M7.5 11 9 6h6l1.5 5"/><circle cx="8" cy="17" r="2"/><circle cx="16" cy="17" r="2"/></svg>
+        <span>{{ garage.car() ? garage.label() : ('nav.no_car' | t) }}</span>
+      </a>
+
+      @if (auth.user(); as u) {
+        <a routerLink="/orders" routerLinkActive="on" class="icon-link">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5h10M9 12h10M9 19h10M5 5h.01M5 12h.01M5 19h.01"/></svg>
+          <span class="lbl">{{ 'nav.orders' | t }}</span>
+        </a>
+        <button type="button" class="icon-link" (click)="logout()" [title]="'nav.logout' | t">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+          <span class="lbl">{{ u.username }}</span>
+        </button>
       } @else {
-        <!-- moon: click to go dark -->
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+        <a routerLink="/login" class="icon-link">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+          <span class="lbl">{{ 'nav.login' | t }}</span>
+        </a>
       }
-    </button>
-    <div class="lang" role="group" aria-label="Language">
-      <button type="button" [class.active]="i18n.lang() === 'en'" (click)="setLang('en')">EN</button>
-      <button type="button" [class.active]="i18n.lang() === 'ru'" (click)="setLang('ru')">RU</button>
-    </div>
+
+      <a routerLink="/cart" routerLinkActive="on" class="cart" [attr.aria-label]="'nav.cart' | t">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.5L21 8H6.2"/><circle cx="10" cy="20.5" r="1"/><circle cx="17" cy="20.5" r="1"/></svg>
+        @if (cart.count() > 0) { <span class="badge">{{ cart.count() }}</span> }
+      </a>
+
+      <button type="button" class="square" (click)="theme.toggle()"
+              [title]="theme.theme() === 'dark' ? ('theme.to_light' | t) : ('theme.to_dark' | t)"
+              [attr.aria-label]="theme.theme() === 'dark' ? ('theme.to_light' | t) : ('theme.to_dark' | t)">
+        @if (theme.theme() === 'dark') {
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+        } @else {
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+        }
+      </button>
+      <div class="lang" role="group" aria-label="Language">
+        <button type="button" [class.active]="i18n.lang() === 'en'" (click)="setLang('en')">EN</button>
+        <button type="button" [class.active]="i18n.lang() === 'ru'" (click)="setLang('ru')">RU</button>
+      </div>
+    </nav>
   </div>
 </header>

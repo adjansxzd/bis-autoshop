@@ -1,52 +1,93 @@
 /* Fonts are bundled locally (npm @fontsource) so the site works offline on exam day */
-@import '@fontsource/oswald/500.css';
-@import '@fontsource/oswald/600.css';
-@import '@fontsource/oswald/700.css';
-@import '@fontsource/ibm-plex-sans/400.css';
-@import '@fontsource/ibm-plex-sans/500.css';
-@import '@fontsource/ibm-plex-sans/600.css';
+@import '@fontsource/manrope/400.css';
+@import '@fontsource/manrope/500.css';
+@import '@fontsource/manrope/600.css';
+@import '@fontsource/manrope/700.css';
+@import '@fontsource/manrope/800.css';
 @import '@fontsource/jetbrains-mono/400.css';
 @import '@fontsource/jetbrains-mono/600.css';
-@import '@fontsource/jetbrains-mono/700.css';
 
-/* Global design tokens. Dark theme is the default; light theme overrides below. */
+/*
+ * Design tokens. Light theme is the base; dark theme overrides it.
+ * Every component uses these variables, so switching theme = switching values here.
+ */
 :root {
-  --bg: #0f1012;
-  --panel: #17191c;
-  --panel-2: #1e2125;
-  --line: #2a2e33;
-  --text: #ece8df;
-  --muted: #8a8f96;
-  --accent: #ffb000;   /* signal amber */
-  --ok: #4cc38a;
-  --danger: #ff5c4d;
-  --display: 'Oswald', 'Arial Narrow', sans-serif;
-  --body: 'IBM Plex Sans', system-ui, sans-serif;
-  --mono: 'JetBrains Mono', ui-monospace, monospace;
-  color-scheme: dark;
-}
-
-/* Light theme — switched by ThemeService (<html data-theme="light">) */
-:root[data-theme='light'] {
-  --bg: #f4f2ed;
+  --bg: #f4f5f7;
   --panel: #ffffff;
-  --panel-2: #ece9e2;
-  --line: #dcd8cf;
-  --text: #18191b;
-  --muted: #62666c;
-  --accent: #c27a00;   /* darker amber so text stays readable on white */
-  --ok: #1d8656;
-  --danger: #cf3426;
+  --panel-2: #eef0f3;
+  --line: #e1e4e9;
+  --text: #11151b;
+  --muted: #5d6876;
+  --accent: #d91f26;        /* signal red */
+  --accent-hover: #b8161c;
+  --accent-ink: #ffffff;    /* text on accent */
+  --accent-soft: #fdecec;
+  --ok: #138a43;
+  --ok-soft: #e6f5ec;
+  --warn: #b45309;
+  --danger: #c81e1e;
+  --hero: #12161d;          /* the dark band behind the car selector */
+  --hero-text: #f3f5f8;
+  --shadow: 0 1px 2px rgba(16, 24, 40, .05), 0 4px 14px rgba(16, 24, 40, .06);
+  --radius: 12px;
+  --body: 'Manrope', system-ui, sans-serif;
+  --display: 'Manrope', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, monospace;
   color-scheme: light;
 }
 
-body { transition: background-color .2s, color .2s; }
+:root[data-theme='dark'] {
+  --bg: #0d1015;
+  --panel: #151a21;
+  --panel-2: #1c222b;
+  --line: #29303b;
+  --text: #e9edf2;
+  --muted: #94a0ae;
+  --accent: #ef3b3f;
+  --accent-hover: #ff5559;
+  --accent-ink: #ffffff;
+  --accent-soft: #3a1618;
+  --ok: #3ccf7a;
+  --ok-soft: #12291c;
+  --warn: #f0a33a;
+  --danger: #ff6b6b;
+  --hero: #070a0e;
+  --hero-text: #f3f5f8;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 6px 18px rgba(0, 0, 0, .3);
+  color-scheme: dark;
+}
+
 * { box-sizing: border-box; }
 html, body { margin: 0; }
-body { background: var(--bg); color: var(--text); font-family: var(--body); font-size: 15px; -webkit-font-smoothing: antialiased; }
-select {
-  background: var(--panel-2); color: var(--text); border: 1px solid var(--line); border-radius: 6px;
-  padding: 8px 10px; font: inherit; outline: none; cursor: pointer;
-  &:focus { border-color: var(--accent); }
+body {
+  background: var(--bg); color: var(--text); font-family: var(--body); font-size: 15px; line-height: 1.45;
+  -webkit-font-smoothing: antialiased; transition: background-color .2s, color .2s;
 }
-::selection { background: var(--accent); color: #111; }
+a { color: inherit; }
+h1, h2, h3 { font-family: var(--display); letter-spacing: -0.02em; }
+
+select, input[type='text'], input[type='password'], input[type='tel'], textarea {
+  background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 10px;
+  padding: 10px 12px; font: inherit; outline: none;
+  &:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  &:disabled { opacity: .5; }
+}
+select { cursor: pointer; }
+
+/* shared buttons */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  border: 0; border-radius: 10px; padding: 11px 18px; font: inherit; font-weight: 700; cursor: pointer;
+  background: var(--accent); color: var(--accent-ink); text-decoration: none; transition: background .15s;
+  &:hover:not(:disabled) { background: var(--accent-hover); }
+  &:disabled { opacity: .45; cursor: not-allowed; }
+  &.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); &:hover:not(:disabled) { background: var(--panel-2); } }
+  &.block { width: 100%; }
+}
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+.mono { font-family: var(--mono); }
+.error-text { color: var(--danger); font-size: 13px; }
+.container { max-width: 1280px; margin: 0 auto; padding: 0 24px; }
+@media (max-width: 760px) { .container { padding: 0 16px; } }
+
+::selection { background: var(--accent); color: var(--accent-ink); }

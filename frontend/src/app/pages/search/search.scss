@@ -1,7 +1,7 @@
-.wrap { padding: 32px 32px 56px; }
-h1 { font-family: var(--display); font-weight: 600; font-size: 36px; margin: 0 0 24px; span { color: var(--accent); } }
+.wrap { padding: 32px 0 56px; max-width: 1280px; margin: 0 auto; padding-left: 24px; padding-right: 24px; }
+h1 { font-weight: 800; font-size: 30px; margin: 0 0 24px; span { color: var(--accent); } }
 section { margin-bottom: 30px; }
-h4 { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin: 0 0 12px; em { font-style: normal; color: var(--accent); margin-left: 6px; } }
+h4 { font-size: 12px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin: 0 0 12px; em { font-style: normal; color: var(--accent); margin-left: 6px; } }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--panel); border-radius: 999px; padding: 7px 14px; font-size: 14px; color: var(--text); text-decoration: none; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }

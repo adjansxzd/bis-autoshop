@@ -65,3 +65,52 @@ export interface ProductQuery {
   ordering?: string;
   page?: number;
 }
+
+export interface User {
+  id: number;
+  username: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  role: 'customer' | 'manager' | 'admin';
+}
+
+export interface CartItem {
+  id: number;
+  product: Product;
+  quantity: number;
+  subtotal: string;
+}
+
+export interface Cart {
+  id: number;
+  items: CartItem[];
+  total: string;
+}
+
+export interface OrderItem {
+  id: number;
+  product: number;
+  product_name: string;
+  quantity: number;
+  unit_price: string;
+  subtotal: string;
+}
+
+export interface Order {
+  id: number;
+  status: 'new' | 'paid' | 'shipped' | 'delivered' | 'cancelled';
+  shipping_address: string;
+  phone: string;
+  total: string;
+  items: OrderItem[];
+  created_at: string;
+}
+
+/** The car the user picked in the Year / Make / Model selector ("My garage"). */
+export interface GarageCar {
+  carId: number;
+  make: string;
+  model: string;
+  year: number;
+}

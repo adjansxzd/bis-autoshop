@@ -126,7 +126,7 @@ POST /api/cart/items/  ·  /api/orders/checkout/
 cd backend
 python manage.py test
 ```
-10 automated API tests cover: health check, public catalog, filters ("Fits my car"), 3-entity search, registration, **role access** (a customer can't create products, a manager can), **cart → order** flow with stock reduction, and error cases (more than stock, empty cart checkout).
+16 automated API tests cover: health check, public catalog, filters ("Fits my car"), 3-entity search, registration, **role access** (a customer can't create products, a manager can), **cart → order** flow with stock reduction, **several orders per user**, several products in one order, **stock limits** (can't add an out-of-stock product, can't add or change quantity above stock, empty-cart checkout fails), cancelled orders return stock, and customers see only their own orders.
 
 ## AI usage
 

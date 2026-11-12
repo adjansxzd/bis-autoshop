@@ -110,7 +110,14 @@ class OrderViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.Ge
     @action(detail=True, methods=["patch"], permission_classes=[IsStaffRole])
     def status(self, request, pk=None):
         order = self.get_object()
+        previous = order.status
         serializer = OrderStatusSerializer(order, data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        with transaction.atomic():
+            serializer.save()
+            # a cancelled order gives its items back to stock (only once)
+            if order.status == Order.Status.CANCELLED and previous != Order.Status.CANCELLED:
+                for item in order.items.select_related("product"):
+                    item.product.stock += item.quantity
+                    item.product.save(update_fields=["stock"])
         return Response(OrderSerializer(order).data)

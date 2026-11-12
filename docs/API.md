@@ -18,10 +18,10 @@ Auth: JWT. Get a token from `POST /api/auth/login/`, then send header `Authoriza
 | GET | `/search/?q=` | anyone | Global search across **products, categories, car models** |
 | GET / DELETE | `/cart/` | logged in | View / empty my cart |
 | POST | `/cart/items/` | logged in | Add `{product_id, quantity}` (checks stock) |
-| PATCH / DELETE | `/cart/items/{id}/` | logged in | Change quantity / remove |
+| PATCH / DELETE | `/cart/items/{id}/` | logged in | Change quantity (rejected above stock) / remove |
 | GET | `/orders/` | logged in | My orders (manager/admin see all) |
 | POST | `/orders/checkout/` | logged in | Cart → order `{shipping_address, phone}`; reduces stock |
-| PATCH | `/orders/{id}/status/` | manager, admin | Change order status |
+| PATCH | `/orders/{id}/status/` | manager, admin | Change order status (cancelled → stock is returned) |
 
 ### Product filters
 `/products/?category=brakes&brand=2&car=1&min_price=5000&max_price=40000&in_stock=true&search=pads&ordering=-price&page=2`
