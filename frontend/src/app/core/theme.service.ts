@@ -20,7 +20,14 @@ export class ThemeService {
 
   set(theme: Theme) {
     this.theme.set(theme);
-    this.apply(theme);
+    // Cross-fade the whole page in one go (View Transitions API). Without it the background
+    // animated while cards switched instantly, which looked broken. Older browsers just switch.
+    const doc = document as Document & { startViewTransition?: (cb: () => void) => unknown };
+    if (doc.startViewTransition && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      doc.startViewTransition(() => this.apply(theme));
+    } else {
+      this.apply(theme);
+    }
     try {
       localStorage.setItem('theme', theme);
     } catch {}

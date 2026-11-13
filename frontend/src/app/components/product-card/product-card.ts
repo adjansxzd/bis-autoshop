@@ -48,8 +48,9 @@ import { KztPipe, LocPipe, TPipe } from '../../shared/t.pipe';
   styles: `
     .pc { display: flex; flex-direction: column; height: 100%; overflow: hidden; transition: transform .15s, box-shadow .15s;
       &:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(16,24,40,.12); } }
-    .visual { position: relative; display: grid; place-items: center; aspect-ratio: 16 / 9; background: var(--panel-2); }
-    .ic { display: grid; place-items: center; width: 76px; height: 76px; border-radius: 50%; background: var(--panel); color: var(--accent); box-shadow: var(--shadow); }
+    .visual { position: relative; display: grid; place-items: center; aspect-ratio: 16 / 9;
+      background: linear-gradient(180deg, var(--panel-2), var(--panel)); border-bottom: 1px solid var(--line); }
+    .ic { display: grid; place-items: center; width: 76px; height: 76px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); }
     .fit { position: absolute; left: 10px; top: 10px; right: 10px; width: fit-content; font-size: 12px; font-weight: 700;
       padding: 4px 9px; border-radius: 999px; background: var(--ok-soft); color: var(--ok);
       &.no { background: var(--panel); color: var(--muted); border: 1px solid var(--line); } }

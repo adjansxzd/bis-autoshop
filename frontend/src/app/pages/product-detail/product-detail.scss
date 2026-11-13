@@ -2,7 +2,7 @@
 .back { color: var(--muted); text-decoration: none; font-size: 14px; font-weight: 600; &:hover { color: var(--accent); } }
 .detail { display: grid; grid-template-columns: 1fr 1.05fr; gap: 40px; margin-top: 18px; }
 .visual { display: grid; place-items: center; aspect-ratio: 1; color: var(--muted);
-  background: radial-gradient(circle at 50% 45%, var(--panel) 0 30%, var(--panel-2) 72%); align-self: start; }
+  background: linear-gradient(180deg, var(--panel-2), var(--panel)); color: var(--accent); align-self: start; }
 .meta { color: var(--muted); font-weight: 600; font-size: 14px; .mono { font-size: 12px; } }
 h1 { font-size: clamp(26px, 3.2vw, 38px); line-height: 1.1; font-weight: 800; margin: 8px 0 14px; }
 .fit { display: inline-block; font-weight: 700; font-size: 14px; padding: 6px 12px; border-radius: 999px; background: var(--ok-soft); color: var(--ok);
