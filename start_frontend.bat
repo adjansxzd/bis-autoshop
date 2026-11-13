@@ -1,4 +1,5 @@
 @echo off
 cd frontend
-if not exist node_modules call npm install
+REM installs new packages if package.json changed (fast when nothing changed)
+call npm install
 npm start

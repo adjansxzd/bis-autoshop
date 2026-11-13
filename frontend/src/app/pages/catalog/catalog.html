@@ -1,37 +1,38 @@
 <section class="hero">
-  <div class="hero-text">
-    <span class="eyebrow">// {{ 'nav.catalog' | t }}</span>
-    <h1>{{ 'hero.title' | t }}</h1>
-    <p>{{ 'hero.sub' | t }}</p>
+  <div class="container hero-grid">
+    <div class="hero-text">
+      <span class="kicker">{{ 'hero.kicker' | t }}</span>
+      <h1>{{ 'hero.title' | t }}</h1>
+      <p>{{ 'hero.sub' | t }}</p>
+      <ul class="perks">
+        <li><span>✓</span>{{ 'perk.fit' | t }}</li>
+        <li><span>✓</span>{{ 'perk.stock' | t }}</li>
+        <li><span>✓</span>{{ 'perk.delivery' | t }}</li>
+      </ul>
+    </div>
+    <!-- Year / Make / Model: the main idea of our shop -->
+    <app-ymm-selector [cars]="cars()" (picked)="onCarPicked()" />
   </div>
-
-  <!-- "Fits my car" — the main idea of our shop -->
-  <label class="garage">
-    <span class="garage-label">{{ 'filter.my_car' | t }}</span>
-    <select [(ngModel)]="filters.car" (ngModelChange)="apply()">
-      <option [ngValue]="null">{{ 'filter.any_car' | t }}</option>
-      @for (car of cars(); track car.id) {
-        <option [ngValue]="car.id">{{ car.label }}</option>
-      }
-    </select>
-  </label>
 </section>
 
-<div class="layout">
-  <aside class="filters">
+<section class="container tiles">
+  @for (c of categories(); track c.id) {
+    <button type="button" class="tile card" [class.active]="filters.category === c.slug" (click)="pickCategory(filters.category === c.slug ? '' : c.slug)">
+      <app-part-icon [name]="c.icon" [size]="30" />
+      <span>{{ c | loc: 'name' }}</span>
+    </button>
+  }
+</section>
+
+<div class="container layout" id="parts">
+  <aside class="filters card">
     <h4>{{ 'filter.categories' | t }}</h4>
     <ul class="cats">
-      <li>
-        <button [class.active]="!filters.category" (click)="pickCategory('')">
-          <app-part-icon name="star" [size]="18" /> {{ 'filter.all' | t }}
-        </button>
-      </li>
+      <li><button [class.active]="!filters.category" (click)="pickCategory('')">{{ 'filter.all' | t }}</button></li>
       @for (c of categories(); track c.id) {
         <li>
           <button [class.active]="filters.category === c.slug" (click)="pickCategory(c.slug)">
-            <app-part-icon [name]="c.icon" [size]="18" />
-            <span>{{ c | loc: 'name' }}</span>
-            <em>{{ c.product_count }}</em>
+            <span>{{ c | loc: 'name' }}</span><em>{{ c.product_count }}</em>
           </button>
         </li>
       }
@@ -40,9 +41,7 @@
     <h4>{{ 'filter.brand' | t }}</h4>
     <select [(ngModel)]="filters.brand" (ngModelChange)="apply()">
       <option [ngValue]="null">{{ 'filter.any_brand' | t }}</option>
-      @for (b of brands(); track b.id) {
-        <option [ngValue]="b.id">{{ b.name }}</option>
-      }
+      @for (b of brands(); track b.id) { <option [ngValue]="b.id">{{ b.name }}</option> }
     </select>
 
     <label class="check">
@@ -50,14 +49,20 @@
       {{ 'filter.in_stock' | t }}
     </label>
 
-    <button class="reset" (click)="reset()">{{ 'filter.reset' | t }}</button>
+    <button class="btn ghost block" (click)="reset()">{{ 'filter.reset' | t }}</button>
   </aside>
 
   <main>
     <div class="toolbar">
-      <span class="count"><b>{{ total() }}</b> {{ 'catalog.found' | t }}
-        @if (selectedCar(); as car) { · <span class="tag">{{ car.label }}</span> }
-      </span>
+      <div class="count">
+        <b>{{ total() }}</b> {{ 'catalog.found' | t }}
+        @if (garage.car(); as car) {
+          <label class="fit-toggle">
+            <input type="checkbox" [(ngModel)]="onlyMyCar" (ngModelChange)="apply()" />
+            {{ 'filter.fits_only' | t }} <b>{{ garage.label() }}</b>
+          </label>
+        }
+      </div>
       <label class="sort">
         {{ 'sort.label' | t }}
         <select [(ngModel)]="filters.ordering" (ngModelChange)="apply()">
@@ -76,16 +81,13 @@
       <div class="state">{{ 'catalog.empty' | t }}</div>
     } @else {
       <div class="grid" [class.dim]="loading()">
-        @for (p of products(); track p.id) {
-          <app-product-card [product]="p" />
-        }
+        @for (p of products(); track p.id) { <app-product-card [product]="p" /> }
       </div>
-
       @if (totalPages() > 1) {
         <nav class="pager">
-          <button [disabled]="filters.page === 1" (click)="goToPage(filters.page! - 1)">← {{ 'page.prev' | t }}</button>
+          <button class="btn ghost" [disabled]="filters.page === 1" (click)="goToPage(filters.page! - 1)">← {{ 'page.prev' | t }}</button>
           <span>{{ filters.page }} / {{ totalPages() }}</span>
-          <button [disabled]="filters.page === totalPages()" (click)="goToPage(filters.page! + 1)">{{ 'page.next' | t }} →</button>
+          <button class="btn ghost" [disabled]="filters.page === totalPages()" (click)="goToPage(filters.page! + 1)">{{ 'page.next' | t }} →</button>
         </nav>
       }
     }

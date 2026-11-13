@@ -1,0 +1,58 @@
+<div class="container wrap">
+  <h1>{{ 'cart.title' | t }}</h1>
+
+  @if (placed(); as o) {
+    <div class="card done">
+      <div class="tick">✓</div>
+      <h2>{{ 'cart.placed' | t }} #{{ o.id }}</h2>
+      <p>{{ o.total | kzt }} · {{ 'cart.placed_sub' | t }}</p>
+      <div class="done-actions">
+        <a class="btn" routerLink="/orders">{{ 'nav.orders' | t }}</a>
+        <a class="btn ghost" routerLink="/">{{ 'cart.to_catalog' | t }}</a>
+      </div>
+    </div>
+  } @else if (!auth.isLoggedIn()) {
+    <div class="card empty">
+      <p>{{ 'cart.need_login' | t }}</p>
+      <a class="btn" routerLink="/login" [queryParams]="{ next: '/cart' }">{{ 'nav.login' | t }}</a>
+    </div>
+  } @else if (!cart.cart()?.items?.length) {
+    <div class="card empty">
+      <p>{{ 'cart.empty' | t }}</p>
+      <a class="btn" routerLink="/">{{ 'cart.to_catalog' | t }}</a>
+    </div>
+  } @else {
+    <div class="layout">
+      <ul class="items">
+        @for (item of cart.cart()!.items; track item.id) {
+          <li class="card item">
+            <a class="thumb" [routerLink]="['/product', item.product.id]"><app-part-icon [name]="item.product.category.icon" [size]="34" /></a>
+            <div class="info">
+              <a class="name" [routerLink]="['/product', item.product.id]">{{ item.product | loc: 'name' }}</a>
+              <div class="meta">{{ item.product.brand.name }} · <span class="mono">{{ item.product.sku }}</span> · {{ item.product.price | kzt }}</div>
+              <div class="limit" [class.max]="item.quantity >= item.product.stock">
+                {{ 'cart.stock_limit' | t }} {{ item.product.stock }} {{ 'product.pcs' | t }}
+              </div>
+              @if (itemErrors()[item.id]) { <div class="error-text">{{ itemErrors()[item.id] }}</div> }
+            </div>
+            <!-- stock limit: the stepper stops at product.stock -->
+            <app-qty-stepper [value]="item.quantity" [max]="item.product.stock" (valueChange)="setQty(item, $event)" />
+            <div class="sub">{{ item.subtotal | kzt }}</div>
+            <button type="button" class="rm" (click)="remove(item)" [title]="'cart.remove' | t" [attr.aria-label]="'cart.remove' | t">✕</button>
+          </li>
+        }
+      </ul>
+
+      <aside class="card summary">
+        <div class="total-row"><span>{{ 'cart.total' | t }} ({{ cart.count() }} {{ 'cart.items' | t }})</span><strong>{{ cart.cart()!.total | kzt }}</strong></div>
+        <h3>{{ 'cart.checkout' | t }}</h3>
+        <form (ngSubmit)="checkout()" #f="ngForm">
+          <label>{{ 'cart.address' | t }}<input type="text" name="address" [(ngModel)]="address" required placeholder="Almaty, Tole bi 59" /></label>
+          <label>{{ 'cart.phone' | t }}<input type="tel" name="phone" [(ngModel)]="phone" required placeholder="+7 700 123 45 67" /></label>
+          @if (error()) { <div class="error-text">{{ error() }}</div> }
+          <button class="btn block" type="submit" [disabled]="!f.valid || placing()">{{ 'cart.place_order' | t }}</button>
+        </form>
+      </aside>
+    </div>
+  }
+</div>

@@ -12,6 +12,6 @@ import { TPipe } from './shared/t.pipe';
     <router-outlet />
     <footer>{{ 'footer.text' | t }}</footer>
   `,
-  styles: `footer { padding: 24px 32px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; font-family: var(--mono); }`,
+  styles: `footer { padding: 24px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; text-align: center; }`,
 })
 export class App {}

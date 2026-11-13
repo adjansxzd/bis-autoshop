@@ -183,3 +183,53 @@ class ShopFlowTests(APITestCase):
         self.login("customer")
         res = self.client.post("/api/orders/checkout/", {"shipping_address": "Almaty", "phone": "+77001234567"})
         self.assertEqual(res.status_code, 400)
+
+    def test_user_can_place_several_orders(self):
+        self.login("customer")
+        for sku in ("BR-001", "OIL-001"):
+            product = Product.objects.get(sku=sku)
+            self.client.post("/api/cart/items/", {"product_id": product.id, "quantity": 1})
+            res = self.client.post("/api/orders/checkout/", {"shipping_address": "Almaty", "phone": "+77001234567"})
+            self.assertEqual(res.status_code, 201)
+        self.assertEqual(self.client.get("/api/orders/").data["count"], 2)
+
+    def test_one_order_can_hold_several_products(self):
+        self.login("customer")
+        for sku in ("BR-001", "FL-001", "LT-001"):
+            self.client.post("/api/cart/items/", {"product_id": Product.objects.get(sku=sku).id, "quantity": 2})
+        res = self.client.post("/api/orders/checkout/", {"shipping_address": "Almaty", "phone": "+77001234567"})
+        self.assertEqual(len(res.data["items"]), 3)
+
+    def test_out_of_stock_product_cannot_be_added(self):
+        self.login("customer")
+        product = Product.objects.get(sku="FL-003")  # seeded with stock 0
+        res = self.client.post("/api/cart/items/", {"product_id": product.id, "quantity": 1})
+        self.assertEqual(res.status_code, 400)
+
+    def test_changing_quantity_above_stock_is_rejected(self):
+        self.login("customer")
+        product = Product.objects.get(sku="BR-002")
+        item = self.client.post("/api/cart/items/", {"product_id": product.id, "quantity": 1}).data
+        res = self.client.patch(f"/api/cart/items/{item['id']}/", {"quantity": product.stock + 1})
+        self.assertEqual(res.status_code, 400)
+        res = self.client.patch(f"/api/cart/items/{item['id']}/", {"quantity": product.stock})
+        self.assertEqual(res.status_code, 200)
+
+    def test_cancelling_order_returns_stock(self):
+        product = Product.objects.get(sku="BR-003")
+        start = product.stock
+        self.login("customer")
+        self.client.post("/api/cart/items/", {"product_id": product.id, "quantity": 3})
+        order = self.client.post("/api/orders/checkout/", {"shipping_address": "Almaty", "phone": "+77001234567"}).data
+        self.login("manager")
+        self.client.patch(f"/api/orders/{order['id']}/status/", {"status": "cancelled"})
+        product.refresh_from_db()
+        self.assertEqual(product.stock, start)
+
+    def test_customer_sees_only_own_orders(self):
+        User.objects.create_user("other", "o@test.kz", "Strong!pass77")
+        self.login("other", "Strong!pass77")
+        self.client.post("/api/cart/items/", {"product_id": Product.objects.get(sku="BR-001").id, "quantity": 1})
+        self.client.post("/api/orders/checkout/", {"shipping_address": "Almaty", "phone": "+77001234567"})
+        self.login("customer")
+        self.assertEqual(self.client.get("/api/orders/").data["count"], 0)

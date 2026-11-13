@@ -2,8 +2,10 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 import { ApiService } from '../../core/api.service';
+import { GarageService } from '../../core/garage.service';
 import { Brand, CarModel, Category, Product, ProductQuery } from '../../core/models';
 import { ProductCard } from '../../components/product-card/product-card';
+import { YmmSelector } from '../../components/ymm-selector/ymm-selector';
 import { PartIcon } from '../../shared/part-icon';
 import { LocPipe, TPipe } from '../../shared/t.pipe';
 
@@ -11,30 +13,30 @@ const PAGE_SIZE = 12; // must match PAGE_SIZE in Django settings
 
 @Component({
   selector: 'app-catalog',
-  imports: [FormsModule, ProductCard, PartIcon, TPipe, LocPipe],
+  imports: [FormsModule, ProductCard, YmmSelector, PartIcon, TPipe, LocPipe],
   templateUrl: './catalog.html',
   styleUrl: './catalog.scss',
 })
 export class Catalog implements OnInit {
   private api = inject(ApiService);
+  garage = inject(GarageService);
 
-  // reference data for the filters (GET /api/categories/, /api/brands/, /api/cars/)
+  // reference data (GET /api/categories/, /api/brands/, /api/cars/)
   categories = signal<Category[]>([]);
   brands = signal<Brand[]>([]);
   cars = signal<CarModel[]>([]);
 
-  // product list state (GET /api/products/?...)
+  // product list (GET /api/products/?...)
   products = signal<Product[]>([]);
   total = signal(0);
   loading = signal(true);
   error = signal(false);
 
-  // current filters
-  filters: ProductQuery = { category: '', brand: null, car: null, in_stock: false, ordering: '-created_at', page: 1 };
+  filters: ProductQuery = this.defaults();
+  /** when a car is saved in "My garage", show only parts that fit it (can be switched off) */
+  onlyMyCar = true;
 
   totalPages = computed(() => Math.max(1, Math.ceil(this.total() / PAGE_SIZE)));
-  selectedCar = computed(() => this.cars().find((c) => c.id === this.carId()));
-  private carId = signal<number | null>(null);
 
   ngOnInit() {
     this.api.getCategories().subscribe((c) => this.categories.set(c));
@@ -46,8 +48,9 @@ export class Catalog implements OnInit {
   load() {
     this.loading.set(true);
     this.error.set(false);
-    this.carId.set(this.filters.car ?? null);
-    this.api.getProducts(this.filters).subscribe({
+    const car = this.garage.car();
+    const query: ProductQuery = { ...this.filters, car: car && this.onlyMyCar ? car.carId : null };
+    this.api.getProducts(query).subscribe({
       next: (page) => {
         this.products.set(page.results);
         this.total.set(page.count);
@@ -60,10 +63,15 @@ export class Catalog implements OnInit {
     });
   }
 
-  /** Any filter change resets to page 1 */
   apply() {
     this.filters.page = 1;
     this.load();
+  }
+
+  onCarPicked() {
+    this.onlyMyCar = true;
+    this.apply();
+    document.getElementById('parts')?.scrollIntoView({ behavior: 'smooth' });
   }
 
   pickCategory(slug: string) {
@@ -74,11 +82,15 @@ export class Catalog implements OnInit {
   goToPage(page: number) {
     this.filters.page = page;
     this.load();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    document.getElementById('parts')?.scrollIntoView({ behavior: 'smooth' });
   }
 
   reset() {
-    this.filters = { category: '', brand: null, car: null, in_stock: false, ordering: '-created_at', page: 1 };
+    this.filters = this.defaults();
     this.load();
+  }
+
+  private defaults(): ProductQuery {
+    return { category: '', brand: null, in_stock: false, ordering: '-created_at', page: 1 };
   }
 }

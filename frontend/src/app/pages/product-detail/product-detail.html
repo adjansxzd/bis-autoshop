@@ -1,37 +1,51 @@
-<div class="wrap">
+<div class="container wrap">
   <a routerLink="/" class="back">← {{ 'product.back' | t }}</a>
 
   @if (error()) {
     <div class="state">{{ 'catalog.error' | t }}</div>
   } @else if (product(); as p) {
     <article class="detail">
-      <div class="visual">
-        <app-part-icon [name]="p.category.icon" [size]="120" />
-      </div>
+      <div class="visual card"><app-part-icon [name]="p.category.icon" [size]="140" /></div>
 
       <div class="info">
-        <span class="sku">SKU {{ p.sku }}</span>
+        <div class="meta"><span>{{ p.brand.name }}</span> · <span class="mono">SKU {{ p.sku }}</span></div>
         <h1>{{ p | loc: 'name' }}</h1>
+
+        @if (garage.car(); as car) {
+          <div class="fit" [class.no]="!garage.fits(p.compatible_cars)">
+            {{ garage.fits(p.compatible_cars) ? '✓ ' + ('product.fits_yours' | t) : '✕ ' + ('product.not_fit' | t) }} {{ garage.label() }}
+          </div>
+        }
+
         <p class="desc">{{ p | loc: 'description' }}</p>
+
+        <div class="buy card">
+          <div class="price-row">
+            <span class="price">{{ p.price | kzt }}</span>
+            <span class="stock" [class.out]="!p.in_stock" [class.low]="p.in_stock && p.stock <= 5">
+              {{ p.in_stock ? ('product.in_stock' | t) + ': ' + p.stock + ' ' + ('product.pcs' | t) : ('product.out_of_stock' | t) }}
+            </span>
+          </div>
+          <div class="buy-row">
+            <!-- quantity is limited by stock (minus what is already in the cart) -->
+            <app-qty-stepper [value]="qty()" [max]="available() || 1" [disabled]="available() === 0" (valueChange)="qty.set($event)" />
+            <button class="btn" [disabled]="available() === 0 || busy()" (click)="add()">{{ 'product.add' | t }}</button>
+          </div>
+          @if (p.in_stock && available() === 0) { <div class="hint">{{ 'product.max_reached' | t }}</div> }
+          @else if (p.in_stock) { <div class="hint">{{ 'product.max_hint' | t }} {{ available() }} {{ 'product.pcs' | t }}</div> }
+          @if (message()) { <div class="ok">✓ {{ 'product.added' | t }} · <a routerLink="/cart">{{ 'nav.cart' | t }} ({{ cart.count() }})</a></div> }
+          @if (addError()) { <div class="error-text">{{ addError() }}</div> }
+        </div>
 
         <dl class="specs">
           <div><dt>{{ 'product.brand' | t }}</dt><dd>{{ p.brand.name }} · {{ p.brand.country }}</dd></div>
           <div><dt>{{ 'product.category' | t }}</dt><dd>{{ p.category | loc: 'name' }}</dd></div>
-          <div>
-            <dt>{{ p.in_stock ? ('product.in_stock' | t) : ('product.out_of_stock' | t) }}</dt>
-            <dd [class.out]="!p.in_stock">{{ p.stock }} {{ 'product.pcs' | t }}</dd>
-          </div>
         </dl>
-
-        <div class="buy">
-          <span class="price">{{ p.price | kzt }}</span>
-          <button disabled [title]="'Cart: POST /api/cart/items/ — UI in the next sprint'">{{ 'product.add_to_cart' | t }}</button>
-        </div>
 
         <h4>{{ 'product.fits' | t }}</h4>
         <ul class="cars">
           @for (car of p.compatible_cars; track car.id) {
-            <li>{{ car.label }}</li>
+            <li [class.mine]="garage.car()?.carId === car.id">{{ car.label }}</li>
           }
         </ul>
       </div>

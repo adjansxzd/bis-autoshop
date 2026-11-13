@@ -24,24 +24,15 @@ class CartItemSerializer(serializers.ModelSerializer):
         return value
 
     def validate(self, attrs):
+        """Stock limit: you can never have more of a product in the cart than the shop has."""
         product = attrs.get("product") or getattr(self.instance, "product", None)
-        if product is None:
-            return attrs
-
-        quantity = attrs.get("quantity", getattr(self.instance, "quantity", 1))
-        current_quantity = 0
-        request = self.context.get("request")
-        if self.instance is None and request and request.user.is_authenticated:
-            current_quantity = (
-                CartItem.objects.filter(cart__user=request.user, product=product)
-                .values_list("quantity", flat=True)
-                .first()
-                or 0
-            )
-
-        available = get_available_stock(product)
-        if current_quantity + quantity > available:
-            raise serializers.ValidationError({"quantity": f"Only {available} in stock."})
+        quantity = attrs.get("quantity")
+        if product is not None:
+            available = get_available_stock(product)
+            if available == 0:
+                raise serializers.ValidationError({"quantity": "This product is out of stock."})
+            if self.instance is not None and quantity is not None and quantity > available:
+                raise serializers.ValidationError({"quantity": f"Only {available} in stock."})
         return attrs
 
 
