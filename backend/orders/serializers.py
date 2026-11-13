@@ -2,6 +2,7 @@ from rest_framework import serializers
 
 from catalog.models import Product
 from catalog.serializers import ProductSerializer
+from inventory.services import get_available_stock
 
 from .models import Cart, CartItem, Order, OrderItem
 
@@ -21,6 +22,27 @@ class CartItemSerializer(serializers.ModelSerializer):
         if value < 1:
             raise serializers.ValidationError("Quantity must be at least 1.")
         return value
+
+    def validate(self, attrs):
+        product = attrs.get("product") or getattr(self.instance, "product", None)
+        if product is None:
+            return attrs
+
+        quantity = attrs.get("quantity", getattr(self.instance, "quantity", 1))
+        current_quantity = 0
+        request = self.context.get("request")
+        if self.instance is None and request and request.user.is_authenticated:
+            current_quantity = (
+                CartItem.objects.filter(cart__user=request.user, product=product)
+                .values_list("quantity", flat=True)
+                .first()
+                or 0
+            )
+
+        available = get_available_stock(product)
+        if current_quantity + quantity > available:
+            raise serializers.ValidationError({"quantity": f"Only {available} in stock."})
+        return attrs
 
 
 class CartSerializer(serializers.ModelSerializer):
