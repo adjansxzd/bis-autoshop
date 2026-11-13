@@ -2,6 +2,7 @@ from rest_framework import serializers
 
 from catalog.models import Product
 from catalog.serializers import ProductSerializer
+from inventory.services import get_available_stock
 
 from .models import Cart, CartItem, Order, OrderItem
 
@@ -27,11 +28,11 @@ class CartItemSerializer(serializers.ModelSerializer):
         product = attrs.get("product") or getattr(self.instance, "product", None)
         quantity = attrs.get("quantity")
         if product is not None:
-            if product.stock == 0:
+            available = get_available_stock(product)
+            if available == 0:
                 raise serializers.ValidationError({"quantity": "This product is out of stock."})
-            # on update (PATCH) the new quantity replaces the old one
-            if self.instance is not None and quantity is not None and quantity > product.stock:
-                raise serializers.ValidationError({"quantity": f"Only {product.stock} in stock."})
+            if self.instance is not None and quantity is not None and quantity > available:
+                raise serializers.ValidationError({"quantity": f"Only {available} in stock."})
         return attrs
 
 

@@ -1,6 +1,9 @@
 import django_filters
+from django.db.models import Exists, OuterRef
 
 from .models import Product
+from inventory.models import WarehouseStock
+from inventory.signals import MAIN_WAREHOUSE_NAME
 
 
 class ProductFilter(django_filters.FilterSet):
@@ -17,4 +20,11 @@ class ProductFilter(django_filters.FilterSet):
         fields = ["category", "brand", "car", "min_price", "max_price", "in_stock"]
 
     def filter_in_stock(self, queryset, name, value):
-        return queryset.filter(stock__gt=0) if value else queryset.filter(stock=0)
+        main_warehouse_stock = WarehouseStock.objects.filter(
+            product_id=OuterRef("pk"),
+            warehouse__name=MAIN_WAREHOUSE_NAME,
+            quantity__gt=0,
+        )
+        return queryset.annotate(_has_main_warehouse_stock=Exists(main_warehouse_stock)).filter(
+            _has_main_warehouse_stock=value
+        )

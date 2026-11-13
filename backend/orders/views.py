@@ -8,6 +8,9 @@ from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema
 
 from accounts.permissions import IsStaffRole
+from inventory.models import StockMovement, Warehouse, WarehouseStock
+from inventory.services import get_available_stock, sync_product_stock
+from inventory.signals import MAIN_WAREHOUSE_NAME
 
 from .models import Cart, CartItem, Order, OrderItem
 from .serializers import CartItemSerializer, CartSerializer, OrderSerializer, OrderStatusSerializer
@@ -55,8 +58,9 @@ class CartItemViewSet(mixins.CreateModelMixin, mixins.UpdateModelMixin, mixins.D
         quantity = serializer.validated_data.get("quantity", 1)
         item, created = CartItem.objects.get_or_create(cart=get_cart(request.user), product=product, defaults={"quantity": 0})
         item.quantity += quantity
-        if item.quantity > product.stock:
-            raise ValidationError({"quantity": f"Only {product.stock} in stock."})
+        available = get_available_stock(product)
+        if item.quantity > available:
+            raise ValidationError({"quantity": f"Only {available} in stock."})
         item.save()
         return Response(self.get_serializer(item).data, status=status.HTTP_201_CREATED)
 
@@ -87,20 +91,48 @@ class OrderViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.Ge
         serializer = OrderSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         cart = get_cart(request.user)
-        items = list(cart.items.select_related("product").select_for_update())
+        items = list(cart.items.select_related("product").select_for_update().order_by("pk"))
         if not items:
             raise ValidationError({"cart": "Cart is empty."})
 
+        warehouse = Warehouse.objects.select_for_update().filter(name=MAIN_WAREHOUSE_NAME).first()
+        if warehouse is None:
+            raise ValidationError({"stock": "Main warehouse is not configured."})
+
+        locked_stock = {}
         for item in items:
-            if item.quantity > item.product.stock:
-                raise ValidationError({"stock": f"Not enough stock for {item.product.name_en}."})
+            stock = WarehouseStock.objects.select_for_update().filter(
+                warehouse=warehouse, product_id=item.product_id
+            ).first()
+            available = stock.quantity if stock else 0
+            if item.quantity > available:
+                raise ValidationError({
+                    "stock": f"Not enough stock for {item.product.name_en}. Available: {available}."
+                })
+            locked_stock[item.pk] = stock
 
         order = serializer.save(user=request.user)
         total = 0
         for item in items:
-            OrderItem.objects.create(order=order, product=item.product, quantity=item.quantity, unit_price=item.product.price)
-            item.product.stock -= item.quantity
-            item.product.save(update_fields=["stock"])
+            stock = locked_stock[item.pk]
+            stock.quantity -= item.quantity
+            stock.save(update_fields=["quantity", "updated_at"])
+            OrderItem.objects.create(
+                order=order,
+                product=item.product,
+                warehouse=warehouse,
+                quantity=item.quantity,
+                unit_price=item.product.price,
+            )
+            StockMovement.objects.create(
+                movement_type=StockMovement.Type.SALE,
+                warehouse=warehouse,
+                product=item.product,
+                quantity=item.quantity,
+                order=order,
+                user=request.user,
+            )
+            sync_product_stock(item.product_id)
             total += item.product.price * item.quantity
         order.total = total
         order.save(update_fields=["total"])
@@ -108,16 +140,44 @@ class OrderViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.Ge
         return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["patch"], permission_classes=[IsStaffRole])
+    @transaction.atomic
     def status(self, request, pk=None):
         order = self.get_object()
-        previous = order.status
+        order = self.get_queryset().select_for_update().get(pk=order.pk)
         serializer = OrderStatusSerializer(order, data=request.data)
         serializer.is_valid(raise_exception=True)
-        with transaction.atomic():
-            serializer.save()
-            # a cancelled order gives its items back to stock (only once)
-            if order.status == Order.Status.CANCELLED and previous != Order.Status.CANCELLED:
-                for item in order.items.select_related("product"):
-                    item.product.stock += item.quantity
-                    item.product.save(update_fields=["stock"])
+
+        next_status = serializer.validated_data["status"]
+        if order.status == Order.Status.CANCELLED and next_status != Order.Status.CANCELLED:
+            raise ValidationError({"status": "A cancelled order cannot be reopened."})
+
+        if next_status == Order.Status.CANCELLED and order.status != Order.Status.CANCELLED:
+            items = order.items.select_for_update().order_by("pk")
+            for item in items:
+                if item.warehouse_id is None:
+                    warehouse = Warehouse.objects.select_for_update().filter(name=MAIN_WAREHOUSE_NAME).first()
+                    if warehouse is None:
+                        raise ValidationError({"warehouse": "Main warehouse is not configured."})
+                    item.warehouse = warehouse
+                    item.save(update_fields=["warehouse"])
+                else:
+                    warehouse = Warehouse.objects.select_for_update().get(pk=item.warehouse_id)
+                stock, _ = WarehouseStock.objects.select_for_update().get_or_create(
+                    warehouse=warehouse,
+                    product_id=item.product_id,
+                    defaults={"quantity": 0},
+                )
+                stock.quantity += item.quantity
+                stock.save(update_fields=["quantity", "updated_at"])
+                StockMovement.objects.create(
+                    movement_type=StockMovement.Type.RETURN,
+                    warehouse=warehouse,
+                    product_id=item.product_id,
+                    quantity=item.quantity,
+                    order=order,
+                    user=request.user,
+                )
+                sync_product_stock(item.product_id)
+
+        serializer.save()
         return Response(OrderSerializer(order).data)
