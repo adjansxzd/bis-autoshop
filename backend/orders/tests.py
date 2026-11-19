@@ -44,7 +44,7 @@ class ShopFlowTests(APITestCase):
         self.assertIn("categories", res.data)
 
     def test_register_new_user(self):
-        res = self.client.post("/api/auth/register/", {"username": "aibek", "email": "aibek@test.kz", "password": "Strong!pass77"})
+        res = self.client.post("/api/auth/register/", {"username": "aibek", "email": "aibek@test.kz", "password": "Strong!pass77", "password2": "Strong!pass77"})
         self.assertEqual(res.status_code, 201)
         self.assertEqual(User.objects.get(username="aibek").role, "customer")
 

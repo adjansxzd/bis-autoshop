@@ -57,6 +57,7 @@ class User(AbstractUser):
 
     email = models.EmailField(unique=True)
     phone = models.CharField(max_length=20, blank=True)
+    address = models.CharField(max_length=255, blank=True, help_text="Default delivery address, pre-filled at checkout")
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.CUSTOMER)
     preferred_language = models.CharField(max_length=2, default="en", choices=[("en", "English"), ("ru", "Русский")])
 
@@ -80,3 +81,19 @@ class User(AbstractUser):
 
     def __str__(self):
         return f"{self.username} ({self.role})"
+
+
+class GarageCar(models.Model):
+    """'My cars': vehicles a customer saved in their account (shown on any device after login)."""
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="garage")
+    car = models.ForeignKey("catalog.CarModel", on_delete=models.CASCADE, related_name="+")
+    year = models.PositiveSmallIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [models.UniqueConstraint(fields=["user", "car", "year"], name="uniq_user_car_year")]
+
+    def __str__(self):
+        return f"{self.year} {self.car.make} {self.car.model} ({self.user})"

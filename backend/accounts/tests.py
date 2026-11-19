@@ -119,3 +119,87 @@ class AdminPanelRoleTests(TestCase):
         token = self.client.post("/api/auth/login/", {"username": "customer", "password": "demo12345"}).json()["access"]
         orders = self.client.get("/api/orders/", HTTP_AUTHORIZATION=f"Bearer {token}").json()["results"]
         self.assertEqual(orders[0]["status"], "shipped")
+
+
+class AccountTests(TestCase):
+    """Registration, profile, password change, 'My cars' and staying signed in (token refresh)."""
+
+    @classmethod
+    def setUpTestData(cls):
+        call_command("seed", verbosity=0)
+
+    def register(self, **overrides):
+        data = {"username": "aibek", "email": "aibek@test.kz", "password": "Strong!pass77",
+                "password2": "Strong!pass77", "first_name": "Aibek", "phone": "+7 700 123 45 67"}
+        data.update(overrides)
+        return self.client.post("/api/auth/register/", data, content_type="application/json")
+
+    def auth(self, access):
+        return {"HTTP_AUTHORIZATION": f"Bearer {access}"}
+
+    # --- registration ---
+    def test_register_returns_tokens_and_customer_role(self):
+        res = self.register()
+        self.assertEqual(res.status_code, 201, res.content)
+        self.assertIn("access", res.json())
+        self.assertEqual(res.json()["user"]["role"], "customer")
+        me = self.client.get("/api/auth/me/", **self.auth(res.json()["access"]))
+        self.assertEqual(me.json()["username"], "aibek")
+
+    def test_register_rejects_bad_input(self):
+        self.assertEqual(self.register(password2="Other!pass77").status_code, 400)          # passwords differ
+        self.assertEqual(self.register(password="12345678", password2="12345678").status_code, 400)  # weak
+        self.assertEqual(self.register(email="customer@autoshop.local").status_code, 400)  # email taken
+        self.assertEqual(self.register(username="customer").status_code, 400)             # username taken
+        self.assertEqual(self.register(phone="abc").status_code, 400)                      # bad phone
+
+    def test_cannot_register_as_manager(self):
+        res = self.register(role="admin")
+        self.assertEqual(res.json()["user"]["role"], "customer")
+
+    # --- profile ---
+    def test_update_profile_but_not_role(self):
+        access = self.register().json()["access"]
+        res = self.client.patch("/api/auth/me/", {"address": "Almaty, Tole bi 59", "role": "admin"},
+                                content_type="application/json", **self.auth(access))
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json()["address"], "Almaty, Tole bi 59")
+        self.assertEqual(res.json()["role"], "customer")
+
+    def test_change_password(self):
+        access = self.register().json()["access"]
+        bad = self.client.post("/api/auth/password/", {"old_password": "wrong", "new_password": "Newer!pass88"},
+                               content_type="application/json", **self.auth(access))
+        self.assertEqual(bad.status_code, 400)
+        ok = self.client.post("/api/auth/password/", {"old_password": "Strong!pass77", "new_password": "Newer!pass88"},
+                              content_type="application/json", **self.auth(access))
+        self.assertEqual(ok.status_code, 204)
+        self.assertEqual(self.client.post("/api/auth/login/", {"username": "aibek", "password": "Newer!pass88"}).status_code, 200)
+
+    # --- my cars ---
+    def test_garage_add_list_delete_only_own(self):
+        from catalog.models import CarModel
+        camry = CarModel.objects.get(model="Camry")
+        access = self.register().json()["access"]
+        res = self.client.post("/api/auth/garage/", {"car_id": camry.id, "year": 2020},
+                               content_type="application/json", **self.auth(access))
+        self.assertEqual(res.status_code, 201, res.content)
+        car_id = res.json()["id"]
+        # duplicate and impossible year are rejected
+        self.assertEqual(self.client.post("/api/auth/garage/", {"car_id": camry.id, "year": 2020},
+                                          content_type="application/json", **self.auth(access)).status_code, 400)
+        self.assertEqual(self.client.post("/api/auth/garage/", {"car_id": camry.id, "year": 1999},
+                                          content_type="application/json", **self.auth(access)).status_code, 400)
+        self.assertEqual(len(self.client.get("/api/auth/garage/", **self.auth(access)).json()), 1)
+        # another user can't see or delete it
+        other = self.client.post("/api/auth/login/", {"username": "customer", "password": "demo12345"}).json()["access"]
+        self.assertEqual(self.client.get("/api/auth/garage/", **self.auth(other)).json(), [])
+        self.assertEqual(self.client.delete(f"/api/auth/garage/{car_id}/", **self.auth(other)).status_code, 404)
+        self.assertEqual(self.client.delete(f"/api/auth/garage/{car_id}/", **self.auth(access)).status_code, 204)
+
+    # --- staying signed in ---
+    def test_refresh_token_gives_new_access(self):
+        refresh = self.register().json()["refresh"]
+        res = self.client.post("/api/auth/refresh/", {"refresh": refresh}, content_type="application/json")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(self.client.get("/api/auth/me/", **self.auth(res.json()["access"])).status_code, 200)
