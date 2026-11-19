@@ -5,7 +5,7 @@ from rest_framework.test import APITestCase
 
 from catalog.models import Product
 from inventory.models import StockMovement, Warehouse, WarehouseStock
-from inventory.signals import MAIN_WAREHOUSE_NAME
+from inventory.constants import MAIN_WAREHOUSE_NAME
 from orders.models import Cart, CartItem, Order, OrderItem
 
 User = get_user_model()
@@ -215,7 +215,8 @@ class ShopFlowTests(APITestCase):
         res = self.client.patch(f"/api/cart/items/{item['id']}/", {"quantity": product.stock})
         self.assertEqual(res.status_code, 200)
 
-    def test_cancelling_order_returns_stock(self):
+    def test_cancelling_order_restores_product_total(self):
+        # Was a second "test_cancelling_order_returns_stock" that silently replaced the first one.
         product = Product.objects.get(sku="BR-003")
         start = product.stock
         self.login("customer")
@@ -233,3 +234,138 @@ class ShopFlowTests(APITestCase):
         self.client.post("/api/orders/checkout/", {"shipping_address": "Almaty", "phone": "+77001234567"})
         self.login("customer")
         self.assertEqual(self.client.get("/api/orders/").data["count"], 0)
+
+    # --- stock rules -------------------------------------------------------
+
+    def place_order(self, sku="BR-001", quantity=2):
+        """Checkout as customer, then log in as manager. Returns the order id."""
+        self.login("customer")
+        product = Product.objects.get(sku=sku)
+        self.assertEqual(self.client.post("/api/cart/items/", {"product_id": product.id, "quantity": quantity}).status_code, 201)
+        res = self.client.post("/api/orders/checkout/", {"shipping_address": "Almaty", "phone": "+77001234567"})
+        self.assertEqual(res.status_code, 201, res.data)
+        self.client.credentials()
+        self.login("manager")
+        return res.data["id"]
+
+    def set_status(self, order_id, status):
+        return self.client.patch(f"/api/orders/{order_id}/status/", {"status": status})
+
+    def main_stock(self, sku):
+        return WarehouseStock.objects.get(warehouse__name=MAIN_WAREHOUSE_NAME, product__sku=sku).quantity
+
+    def test_shortage_in_one_line_rolls_back_whole_checkout(self):
+        self.login("customer")
+        ok_product = Product.objects.get(sku="BR-001")
+        short_product = Product.objects.get(sku="BR-002")
+        WarehouseStock.objects.filter(product=short_product).update(quantity=1)
+        cart, _ = Cart.objects.get_or_create(user=User.objects.get(username="customer"))
+        CartItem.objects.create(cart=cart, product=ok_product, quantity=1)
+        CartItem.objects.create(cart=cart, product=short_product, quantity=2)
+        start = self.main_stock("BR-001")
+
+        res = self.client.post("/api/orders/checkout/", {"shipping_address": "Almaty", "phone": "+77001234567"})
+
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("Available: 1", str(res.data))
+        self.assertEqual(self.main_stock("BR-001"), start)  # first line was written off, then rolled back
+        self.assertEqual(Order.objects.count(), 0)
+        self.assertFalse(StockMovement.objects.filter(movement_type=StockMovement.Type.SALE).exists())
+
+    def test_checkout_product_without_warehouse_row_fails(self):
+        product = Product.objects.get(sku="BR-001")
+        WarehouseStock.objects.filter(product=product).delete()
+        self.login("customer")
+        cart, _ = Cart.objects.get_or_create(user=User.objects.get(username="customer"))
+        CartItem.objects.create(cart=cart, product=product, quantity=1)
+
+        res = self.client.post("/api/orders/checkout/", {"shipping_address": "Almaty", "phone": "+77001234567"})
+
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("Available: 0", str(res.data))
+
+    def test_cancel_paid_order_returns_stock(self):
+        start = self.main_stock("BR-001")
+        order_id = self.place_order()
+        self.assertEqual(self.set_status(order_id, "paid").status_code, 200)
+        self.assertEqual(self.set_status(order_id, "cancelled").status_code, 200)
+        self.assertEqual(self.main_stock("BR-001"), start)
+
+    def test_cancel_after_shipping_is_rejected(self):
+        start = self.main_stock("BR-001")
+        order_id = self.place_order()
+        for status in ("shipped", "delivered"):
+            self.assertEqual(self.set_status(order_id, status).status_code, 200)
+            res = self.set_status(order_id, "cancelled")
+            self.assertEqual(res.status_code, 400, res.data)
+        self.assertEqual(self.main_stock("BR-001"), start - 2)  # nothing returned
+        self.assertFalse(StockMovement.objects.filter(order_id=order_id, movement_type=StockMovement.Type.RETURN).exists())
+        self.assertEqual(Order.objects.get(pk=order_id).status, Order.Status.DELIVERED)
+
+    def test_status_cannot_go_back(self):
+        order_id = self.place_order()
+        self.assertEqual(self.set_status(order_id, "shipped").status_code, 200)
+        self.assertEqual(self.set_status(order_id, "new").status_code, 400)
+        self.assertEqual(Order.objects.get(pk=order_id).status, Order.Status.SHIPPED)
+
+    def test_cancelled_order_cannot_be_reopened(self):
+        start = self.main_stock("BR-001")
+        order_id = self.place_order()
+        self.set_status(order_id, "cancelled")
+        res = self.set_status(order_id, "new")
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("cannot be reopened", str(res.data))
+        self.assertEqual(self.main_stock("BR-001"), start)
+
+    def test_product_stock_is_read_only_in_api(self):
+        self.login("manager")
+        product = Product.objects.get(sku="BR-001")
+        start = product.stock
+        res = self.client.patch(f"/api/products/{product.id}/", {"stock": 999})
+        self.assertEqual(res.status_code, 200, res.data)
+        product.refresh_from_db()
+        self.assertEqual(product.stock, start)
+        self.assertEqual(self.main_stock("BR-001"), start)
+
+    def test_new_product_gets_empty_main_warehouse_row(self):
+        self.login("manager")
+        p = Product.objects.first()
+        res = self.client.post("/api/products/", {
+            "sku": "NEW-2", "name_en": "Spark plug", "name_ru": "Свеча", "price": "2500",
+            "stock": 10, "category_id": p.category_id, "brand_id": p.brand_id,
+        })
+        self.assertEqual(res.status_code, 201, res.data)
+        self.assertEqual(res.data["stock"], 0)  # stock in the request is ignored
+        self.assertEqual(self.main_stock("NEW-2"), 0)
+
+    def admin_change_status(self, order_id, status):
+        order = Order.objects.get(pk=order_id)
+        item = order.items.get()
+        self.client.force_login(User.objects.get(username="admin"))
+        return self.client.post(f"/admin/orders/order/{order_id}/change/", {
+            "status": status, "shipping_address": order.shipping_address, "phone": order.phone,
+            "items-TOTAL_FORMS": "1", "items-INITIAL_FORMS": "1",
+            "items-MIN_NUM_FORMS": "0", "items-MAX_NUM_FORMS": "1000",
+            "items-0-id": str(item.pk), "items-0-order": str(order_id),
+        })
+
+    def test_cancel_in_django_admin_returns_stock(self):
+        start = self.main_stock("BR-001")
+        order_id = self.place_order()
+
+        res = self.admin_change_status(order_id, "cancelled")
+
+        self.assertEqual(res.status_code, 302)  # saved, redirected to the list
+        self.assertEqual(Order.objects.get(pk=order_id).status, Order.Status.CANCELLED)
+        self.assertEqual(self.main_stock("BR-001"), start)
+        self.assertEqual(StockMovement.objects.filter(order_id=order_id, movement_type=StockMovement.Type.RETURN).count(), 1)
+
+    def test_django_admin_rejects_cancel_after_shipping(self):
+        order_id = self.place_order()
+        self.set_status(order_id, "shipped")
+
+        res = self.admin_change_status(order_id, "cancelled")
+
+        self.assertEqual(res.status_code, 200)  # form re-rendered with an error
+        self.assertEqual(Order.objects.get(pk=order_id).status, Order.Status.SHIPPED)
+        self.assertFalse(StockMovement.objects.filter(order_id=order_id, movement_type=StockMovement.Type.RETURN).exists())

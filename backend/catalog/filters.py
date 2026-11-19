@@ -3,7 +3,7 @@ from django.db.models import Exists, OuterRef
 
 from .models import Product
 from inventory.models import WarehouseStock
-from inventory.signals import MAIN_WAREHOUSE_NAME
+from inventory.constants import MAIN_WAREHOUSE_NAME
 
 
 class ProductFilter(django_filters.FilterSet):

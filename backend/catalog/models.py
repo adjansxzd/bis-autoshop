@@ -59,6 +59,8 @@ class Product(models.Model):
     brand = models.ForeignKey(Brand, on_delete=models.PROTECT, related_name="products")
     compatible_cars = models.ManyToManyField(CarModel, blank=True, related_name="products")
     price = models.DecimalField(max_digits=10, decimal_places=2)  # in KZT
+    # Cached sum of WarehouseStock.quantity over all warehouses. Never write it directly:
+    # it is refreshed by inventory.services.sync_product_stock().
     stock = models.PositiveIntegerField(default=0)
     image_url = models.URLField(blank=True)
     is_active = models.BooleanField(default=True)
@@ -67,6 +69,9 @@ class Product(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["is_active", "created_at"], name="product_active_created_idx"),
+        ]
 
     @property
     def in_stock(self):

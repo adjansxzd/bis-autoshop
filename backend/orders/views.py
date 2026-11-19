@@ -1,5 +1,6 @@
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
-from rest_framework import generics, mixins, status, viewsets
+from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
@@ -8,12 +9,11 @@ from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema
 
 from accounts.permissions import IsStaffRole
-from inventory.models import StockMovement, Warehouse, WarehouseStock
-from inventory.services import get_available_stock, sync_product_stock
-from inventory.signals import MAIN_WAREHOUSE_NAME
+from inventory.services import get_available_stock
 
-from .models import Cart, CartItem, Order, OrderItem
+from .models import Cart, CartItem, Order
 from .serializers import CartItemSerializer, CartSerializer, OrderSerializer, OrderStatusSerializer
+from .services import change_order_status, place_order
 
 
 def get_cart(user):
@@ -95,89 +95,25 @@ class OrderViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.Ge
         if not items:
             raise ValidationError({"cart": "Cart is empty."})
 
-        warehouse = Warehouse.objects.select_for_update().filter(name=MAIN_WAREHOUSE_NAME).first()
-        if warehouse is None:
-            raise ValidationError({"stock": "Main warehouse is not configured."})
-
-        locked_stock = {}
-        for item in items:
-            stock = WarehouseStock.objects.select_for_update().filter(
-                warehouse=warehouse, product_id=item.product_id
-            ).first()
-            available = stock.quantity if stock else 0
-            if item.quantity > available:
-                raise ValidationError({
-                    "stock": f"Not enough stock for {item.product.name_en}. Available: {available}."
-                })
-            locked_stock[item.pk] = stock
-
-        order = serializer.save(user=request.user)
-        total = 0
-        for item in items:
-            stock = locked_stock[item.pk]
-            stock.quantity -= item.quantity
-            stock.save(update_fields=["quantity", "updated_at"])
-            OrderItem.objects.create(
-                order=order,
-                product=item.product,
-                warehouse=warehouse,
-                quantity=item.quantity,
-                unit_price=item.product.price,
+        try:
+            order = place_order(
+                request.user,
+                [(item.product, item.quantity) for item in items],
+                serializer.validated_data["shipping_address"],
+                serializer.validated_data["phone"],
             )
-            StockMovement.objects.create(
-                movement_type=StockMovement.Type.SALE,
-                warehouse=warehouse,
-                product=item.product,
-                quantity=item.quantity,
-                order=order,
-                user=request.user,
-            )
-            sync_product_stock(item.product_id)
-            total += item.product.price * item.quantity
-        order.total = total
-        order.save(update_fields=["total"])
+        except DjangoValidationError as error:
+            raise ValidationError({"stock": error.messages})
         cart.items.all().delete()
         return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["patch"], permission_classes=[IsStaffRole])
-    @transaction.atomic
     def status(self, request, pk=None):
         order = self.get_object()
-        order = self.get_queryset().select_for_update().get(pk=order.pk)
         serializer = OrderStatusSerializer(order, data=request.data)
         serializer.is_valid(raise_exception=True)
-
-        next_status = serializer.validated_data["status"]
-        if order.status == Order.Status.CANCELLED and next_status != Order.Status.CANCELLED:
-            raise ValidationError({"status": "A cancelled order cannot be reopened."})
-
-        if next_status == Order.Status.CANCELLED and order.status != Order.Status.CANCELLED:
-            items = order.items.select_for_update().order_by("pk")
-            for item in items:
-                if item.warehouse_id is None:
-                    warehouse = Warehouse.objects.select_for_update().filter(name=MAIN_WAREHOUSE_NAME).first()
-                    if warehouse is None:
-                        raise ValidationError({"warehouse": "Main warehouse is not configured."})
-                    item.warehouse = warehouse
-                    item.save(update_fields=["warehouse"])
-                else:
-                    warehouse = Warehouse.objects.select_for_update().get(pk=item.warehouse_id)
-                stock, _ = WarehouseStock.objects.select_for_update().get_or_create(
-                    warehouse=warehouse,
-                    product_id=item.product_id,
-                    defaults={"quantity": 0},
-                )
-                stock.quantity += item.quantity
-                stock.save(update_fields=["quantity", "updated_at"])
-                StockMovement.objects.create(
-                    movement_type=StockMovement.Type.RETURN,
-                    warehouse=warehouse,
-                    product_id=item.product_id,
-                    quantity=item.quantity,
-                    order=order,
-                    user=request.user,
-                )
-                sync_product_stock(item.product_id)
-
-        serializer.save()
+        try:
+            order = change_order_status(order, serializer.validated_data["status"], request.user)
+        except DjangoValidationError as error:
+            raise ValidationError({"status": error.messages})
         return Response(OrderSerializer(order).data)
