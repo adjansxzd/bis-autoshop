@@ -10,6 +10,7 @@ const DICT: Record<string, Record<Lang, string>> = {
   'nav.cart': { en: 'Cart', ru: 'Корзина' },
   'nav.orders': { en: 'My orders', ru: 'Мои заказы' },
   'nav.login': { en: 'Sign in', ru: 'Войти' },
+  'nav.admin': { en: 'Admin panel', ru: 'Админ-панель' },
   'nav.logout': { en: 'Sign out', ru: 'Выйти' },
   'nav.no_car': { en: 'Add your car', ru: 'Добавить авто' },
   'theme.to_light': { en: 'Switch to light theme', ru: 'Светлая тема' },

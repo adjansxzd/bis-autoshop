@@ -48,7 +48,7 @@ ROOT_URLCONF = "config.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [BASE_DIR / "templates"],  # our admin branding
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -88,6 +88,9 @@ STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Angular dev server runs on :4200 and calls the API on :8000
+# "View site" link in the admin panel opens the shop
+SHOP_URL = os.environ.get("SHOP_URL", "http://localhost:4200/")
+
 CORS_ALLOWED_ORIGINS = os.environ.get(
     "CORS_ALLOWED_ORIGINS", "http://localhost:4200,http://127.0.0.1:4200"
 ).split(",")

@@ -105,9 +105,21 @@ npm start
 |---|---|
 | http://localhost:4200 | Website |
 | http://127.0.0.1:8000/api/docs/ | Swagger: all API endpoints, try them live |
-| http://127.0.0.1:8000/admin/ | Django admin |
+| http://127.0.0.1:8000/admin/ | Admin panel (manager / admin only) |
 
 `python manage.py seed` creates **local demo accounts** (`admin`, `manager`, `customer`, password printed in the console). They exist only in your local database; never use them on a deployed server.
+
+## Admin panel & roles
+
+| | Customer | Manager | Admin |
+|---|:-:|:-:|:-:|
+| Open the admin panel (`/admin/`) | ✗ | ✓ | ✓ |
+| Products, categories, brands, car models (CRUD) | ✗ | ✓ | ✓ |
+| Orders: change status, "Mark as shipped", cancel (only new/paid; stock returns to the warehouse) | ✗ | ✓ | ✓ |
+| Warehouse: post stock receipts, view balances and the stock journal | ✗ | ✓ | ✓ |
+| Users and roles | ✗ | ✗ | ✓ |
+
+The **role field is the single source of truth**: changing a user's role automatically updates their admin access (`User.save()` → staff flag + "Managers" group). Products list has search, filters (stock / category / brand), low-stock highlighting and inline price editing. Stock itself is never typed in by hand: it changes only through the **warehouse** (stock receipts in, sales out, returns back), and every change is written to the stock journal. Staff see an "Admin panel" link in the shop header.
 
 ## API
 
@@ -126,7 +138,7 @@ POST /api/cart/items/  ·  /api/orders/checkout/
 cd backend
 python manage.py test
 ```
-16 automated API tests cover: health check, public catalog, filters ("Fits my car"), 3-entity search, registration, **role access** (a customer can't create products, a manager can), **cart → order** flow with stock reduction, **several orders per user**, several products in one order, **stock limits** (can't add an out-of-stock product, can't add or change quantity above stock, empty-cart checkout fails), cancelled orders return stock, and customers see only their own orders.
+60 automated tests cover: health check, public catalog, filters ("Fits my car"), 3-entity search, registration, **role access** in the API, **cart → order** flow with stock reduction, **several orders per user**, **stock limits**, cancelled orders return stock, customers see only their own orders — and the **admin panel**: a customer can't open it, a manager can manage products and orders but not users, an admin can, role changes update access, "Mark as shipped" / "Cancel" actions, the low-stock filter — plus the **warehouse** (inventory): stock receipts, sales and returns always match the stock journal, no double write-off or double return, and status rules (a shipped order can't be cancelled, statuses can't go backwards).
 
 ## AI usage
 

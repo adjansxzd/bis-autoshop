@@ -22,6 +22,7 @@
   color: var(--text); text-decoration: none; font: inherit; font-weight: 600; font-size: 14px; background: none; border: 0; cursor: pointer; white-space: nowrap;
   &:hover, &.on { background: var(--panel-2); }
 }
+.admin { color: var(--accent); }
 .garage { border: 1px dashed var(--line); color: var(--muted); max-width: 230px;
   span { overflow: hidden; text-overflow: ellipsis; }
   &.set { border: 1px solid var(--ok); color: var(--ok); background: var(--ok-soft); } }

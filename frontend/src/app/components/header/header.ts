@@ -2,6 +2,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 
+import { environment } from '../../../environments/environment';
 import { ApiService } from '../../core/api.service';
 import { AuthService } from '../../core/auth.service';
 import { CartService } from '../../core/cart.service';
@@ -25,6 +26,7 @@ export class Header implements OnInit {
   cart = inject(CartService);
   garage = inject(GarageService);
 
+  readonly adminUrl = environment.adminUrl;
   apiOnline = signal<boolean | null>(null); // null = checking
   query = '';
 

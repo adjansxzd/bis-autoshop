@@ -124,13 +124,12 @@ class Command(BaseCommand):
                 opening.append((p, stock))
 
         User = get_user_model()
-        for username, email, role, superuser in DEMO_USERS:
+        for username, email, role, _superuser in DEMO_USERS:
             user, created = User.objects.get_or_create(username=username, defaults={"email": email, "role": role})
             if created:
                 user.set_password(DEMO_PASSWORD)
-                user.is_staff = role in ("admin", "manager")  # can open /admin/
-                user.is_superuser = superuser
-                user.save()
+            user.role = role
+            user.save()  # User.save() syncs staff/superuser flags and the Managers group from the role
 
         if opening:
             receipt = StockReceipt.objects.create(warehouse=warehouse)
@@ -139,8 +138,9 @@ class Command(BaseCommand):
             )
             receive_stock(receipt, User.objects.get(username="manager"))
 
-        self.stdout.write(self.style.SUCCESS(
-            f"Seeded {Category.objects.count()} categories, {Brand.objects.count()} brands, "
-            f"{CarModel.objects.count()} car models, {Product.objects.count()} products, "
-            f"demo users: admin / manager / customer (password: {DEMO_PASSWORD})"
-        ))
+        if opts.get("verbosity", 1) > 0:
+            self.stdout.write(self.style.SUCCESS(
+                f"Seeded {Category.objects.count()} categories, {Brand.objects.count()} brands, "
+                f"{CarModel.objects.count()} car models, {Product.objects.count()} products, "
+                f"demo users: admin / manager / customer (password: {DEMO_PASSWORD})"
+            ))
