@@ -18,6 +18,12 @@ class WarehouseStockAdmin(admin.ModelAdmin):
     list_filter = ("warehouse",)
     search_fields = ("product__sku", "product__name_en", "product__name_ru")
 
+    def get_readonly_fields(self, request, obj=None):
+        # Balances change only through receipts, sales and returns (inventory.services).
+        if obj:
+            return ("warehouse", "product", "quantity", "updated_at")
+        return ("quantity", "updated_at")
+
 
 class StockReceiptItemInline(admin.TabularInline):
     model = StockReceiptItem
@@ -64,8 +70,9 @@ def post_stock_receipts(modeladmin, request, queryset):
 
 @admin.register(StockReceipt)
 class StockReceiptAdmin(admin.ModelAdmin):
-    list_display = ("id", "warehouse", "created_at", "posted_at")
+    list_display = ("id", "number", "warehouse", "created_at", "posted_at")
     list_filter = ("warehouse",)
+    search_fields = ("number",)
     readonly_fields = ("posted_at",)
     inlines = [StockReceiptItemInline]
     actions = [post_stock_receipts]
@@ -73,7 +80,7 @@ class StockReceiptAdmin(admin.ModelAdmin):
     def get_readonly_fields(self, request, obj=None):
         fields = list(super().get_readonly_fields(request, obj))
         if obj and obj.posted_at:
-            fields.append("warehouse")
+            fields += ["warehouse", "number"]
         return fields
 
     def has_delete_permission(self, request, obj=None):
@@ -110,3 +117,13 @@ class StockMovementAdmin(admin.ModelAdmin):
     list_filter = ("movement_type", "warehouse", "created_at")
     search_fields = ("product__sku", "product__name_en", "product__name_ru")
     readonly_fields = ("created_at",)
+
+    # The journal is written only by inventory.services; in the admin it is view-only.
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False

@@ -48,7 +48,8 @@ class ProductSerializer(serializers.ModelSerializer):
             "category_id", "brand_id", "compatible_car_ids",
             "created_at", "updated_at",
         ]
-        read_only_fields = ["created_at", "updated_at"]
+        # stock is a cached warehouse total; change it with stock receipts (inventory app), not here.
+        read_only_fields = ["stock", "created_at", "updated_at"]
 
     def validate_price(self, value):
         if value <= 0:

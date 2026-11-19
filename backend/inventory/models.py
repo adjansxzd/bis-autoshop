@@ -34,11 +34,15 @@ class WarehouseStock(models.Model):
 
 class StockReceipt(models.Model):
     warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT, related_name="receipts")
+    number = models.CharField(max_length=40, blank=True, help_text="Supplier invoice / document number")
     created_at = models.DateTimeField(auto_now_add=True)
     posted_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(fields=["number"], condition=~Q(number=""), name="uniq_receipt_number"),
+        ]
 
     def __str__(self):
         return f"Receipt #{self.pk} at {self.warehouse}"
@@ -52,6 +56,7 @@ class StockReceiptItem(models.Model):
     class Meta:
         constraints = [
             models.CheckConstraint(condition=Q(quantity__gt=0), name="receipt_item_qty_positive"),
+            models.UniqueConstraint(fields=["receipt", "product"], name="uniq_receipt_product"),
         ]
 
     def __str__(self):
@@ -84,6 +89,16 @@ class StockMovement(models.Model):
         ordering = ["-created_at"]
         constraints = [
             models.CheckConstraint(condition=Q(quantity__gt=0), name="stock_move_qty_positive"),
+            # At most one sale and one return per product per order: blocks double write-off / double return.
+            models.UniqueConstraint(
+                fields=["order", "product", "movement_type"],
+                condition=Q(movement_type__in=["sale", "return"]),
+                name="uniq_order_product_movement",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["product", "warehouse", "created_at"], name="move_prod_wh_created_idx"),
+            models.Index(fields=["created_at"], name="move_created_idx"),
         ]
 
     def __str__(self):

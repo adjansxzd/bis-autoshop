@@ -1,12 +1,20 @@
 """
 python manage.py seed           -> fills the DB with demo data (safe to run again)
-python manage.py seed --reset   -> deletes catalog data first
+python manage.py seed --reset   -> deletes catalog, orders, carts and stock data first
 Demo accounts are for LOCAL development only.
+
+Opening stock is not written to Product.stock: it is posted as a stock receipt
+(inventory.services.receive_stock), so every balance has a matching journal entry.
 """
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
+from django.db import transaction
 
 from catalog.models import Brand, CarModel, Category, Product
+from inventory.constants import MAIN_WAREHOUSE_NAME
+from inventory.models import StockMovement, StockReceipt, StockReceiptItem, Warehouse, WarehouseStock
+from inventory.services import receive_stock
+from orders.models import CartItem, Order, OrderItem
 
 CATEGORIES = [
     ("brakes", "Brakes", "Тормозная система", "disc"),
@@ -68,8 +76,17 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument("--reset", action="store_true", help="Delete catalog data before seeding")
 
+    @transaction.atomic
     def handle(self, *args, **opts):
         if opts["reset"]:
+            # Children first: stock rows, journal, receipts and order lines PROTECT products.
+            StockMovement.objects.all().delete()
+            StockReceiptItem.objects.all().delete()
+            StockReceipt.objects.all().delete()
+            WarehouseStock.objects.all().delete()
+            CartItem.objects.all().delete()
+            OrderItem.objects.all().delete()
+            Order.objects.all().delete()
             Product.objects.all().delete()
             CarModel.objects.all().delete()
             Brand.objects.all().delete()
@@ -86,14 +103,25 @@ class Command(BaseCommand):
             car, _ = CarModel.objects.get_or_create(make=make, model=model, year_from=y1, year_to=y2)
             cars.append(car)
 
+        warehouse, _ = Warehouse.objects.get_or_create(name=MAIN_WAREHOUSE_NAME)
+        opening = []
         for sku, en, ru, cat, brand, price, stock, fits in PRODUCTS:
+            # "stock" is NOT in defaults: re-running seed must not overwrite the cached total.
             p, _ = Product.objects.update_or_create(sku=sku, defaults={
                 "name_en": en, "name_ru": ru,
                 "description_en": f"{en} by {brand}. Quality part with manufacturer warranty.",
                 "description_ru": f"{ru} от {brand}. Качественная деталь с гарантией производителя.",
-                "category": cats[cat], "brand": brands[brand], "price": price, "stock": stock,
+                "category": cats[cat], "brand": brands[brand], "price": price,
             })
             p.compatible_cars.set([cars[i] for i in fits])
+            # Opening stock only for products with no journal entries and no balance yet
+            # (an old DB may already hold balances created before the journal existed).
+            if (
+                stock > 0
+                and not StockMovement.objects.filter(product=p).exists()
+                and not WarehouseStock.objects.filter(product=p, quantity__gt=0).exists()
+            ):
+                opening.append((p, stock))
 
         User = get_user_model()
         for username, email, role, superuser in DEMO_USERS:
@@ -103,6 +131,13 @@ class Command(BaseCommand):
                 user.is_staff = role in ("admin", "manager")  # can open /admin/
                 user.is_superuser = superuser
                 user.save()
+
+        if opening:
+            receipt = StockReceipt.objects.create(warehouse=warehouse)
+            StockReceiptItem.objects.bulk_create(
+                [StockReceiptItem(receipt=receipt, product=p, quantity=qty) for p, qty in opening]
+            )
+            receive_stock(receipt, User.objects.get(username="manager"))
 
         self.stdout.write(self.style.SUCCESS(
             f"Seeded {Category.objects.count()} categories, {Brand.objects.count()} brands, "
