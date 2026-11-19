@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
@@ -32,6 +32,17 @@ export class CartPage {
   placing = signal(false);
   placed = signal<Order | null>(null);
 
+  constructor() {
+    // pre-fill delivery details from the profile (My account)
+    effect(() => {
+      const u = this.auth.user();
+      if (u) {
+        if (!this.address) this.address = u.address ?? '';
+        if (!this.phone) this.phone = u.phone ?? '';
+      }
+    });
+  }
+
   setQty(item: CartItem, qty: number) {
     this.cart.setQuantity(item.id, qty).subscribe({
       next: () => this.itemErrors.update((m) => ({ ...m, [item.id]: '' })),
@@ -51,7 +62,6 @@ export class CartPage {
       next: (order) => {
         this.placing.set(false);
         this.placed.set(order);
-        this.address = '';
       },
       error: (e) => {
         this.placing.set(false);

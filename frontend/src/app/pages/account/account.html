@@ -1,0 +1,89 @@
+<div class="container wrap">
+  @if (auth.user(); as u) {
+    <header class="head">
+      <div class="avatar">{{ (u.first_name || u.username).charAt(0).toUpperCase() }}</div>
+      <div>
+        <h1>{{ u.first_name ? u.first_name + ' ' + u.last_name : u.username }}</h1>
+        <p class="muted">{{ u.email }} · {{ 'role.' + u.role | t }}</p>
+      </div>
+      <div class="head-actions">
+        <a class="btn ghost" routerLink="/orders">{{ 'nav.orders' | t }}</a>
+        <button type="button" class="btn ghost" (click)="logout()">{{ 'nav.logout' | t }}</button>
+      </div>
+    </header>
+
+    <div class="grid">
+      <!-- Personal details -->
+      <section class="card panel">
+        <h2>{{ 'acc.profile' | t }}</h2>
+        <form (ngSubmit)="saveProfile()" #pf="ngForm">
+          <div class="row2">
+            <label>{{ 'reg.first_name' | t }}<input type="text" name="fn" [(ngModel)]="form.first_name" /></label>
+            <label>{{ 'reg.last_name' | t }}<input type="text" name="ln" [(ngModel)]="form.last_name" /></label>
+          </div>
+          <label>{{ 'reg.email' | t }}
+            <input type="email" name="email" [(ngModel)]="form.email" required email [class.bad]="profileErrors()['email']" />
+            @if (profileErrors()['email']) { <span class="error-text">{{ profileErrors()['email'] }}</span> }
+          </label>
+          <label>{{ 'reg.phone' | t }}
+            <input type="tel" name="phone" [(ngModel)]="form.phone" placeholder="+7 700 123 45 67" [class.bad]="profileErrors()['phone']" />
+            @if (profileErrors()['phone']) { <span class="error-text">{{ profileErrors()['phone'] }}</span> }
+          </label>
+          <label>{{ 'acc.address' | t }}
+            <input type="text" name="address" [(ngModel)]="form.address" placeholder="Almaty, Tole bi 59, apt 12" />
+            <span class="hint">{{ 'acc.address_hint' | t }}</span>
+          </label>
+          <label>{{ 'acc.language' | t }}
+            <select name="lang" [(ngModel)]="form.preferred_language">
+              <option value="en">English</option>
+              <option value="ru">Русский</option>
+            </select>
+          </label>
+          <div class="actions">
+            <button class="btn" type="submit" [disabled]="!pf.valid || profileState() === 'saving'">{{ 'acc.save' | t }}</button>
+            @if (profileState() === 'saved') { <span class="ok">✓ {{ 'acc.saved' | t }}</span> }
+          </div>
+        </form>
+      </section>
+
+      <!-- My cars -->
+      <section class="card panel">
+        <h2>{{ 'acc.cars' | t }} @if (garage.saved().length) { <em>{{ garage.saved().length }}</em> }</h2>
+        @if (!garage.saved().length) {
+          <p class="muted">{{ 'acc.cars_empty' | t }}</p>
+        } @else {
+          <ul class="cars">
+            @for (s of garage.saved(); track s.id) {
+              <li [class.current]="isCurrent(s)">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17h14M6 17l1.5-6h9L18 17M7.5 11 9 6h6l1.5 5"/><circle cx="8" cy="17" r="2"/><circle cx="16" cy="17" r="2"/></svg>
+                <div class="car-name"><strong>{{ s.year }} {{ s.make }} {{ s.model }}</strong>
+                  @if (isCurrent(s)) { <span>{{ 'acc.current' | t }}</span> }
+                </div>
+                @if (!isCurrent(s)) { <button type="button" class="link" (click)="garage.select(s)">{{ 'acc.use' | t }}</button> }
+                <button type="button" class="rm" (click)="removeCar(s)" [title]="'acc.remove' | t" [attr.aria-label]="'acc.remove' | t">✕</button>
+              </li>
+            }
+          </ul>
+        }
+        <app-ymm-selector class="flat" [cars]="cars()" [addMode]="true" />
+      </section>
+
+      <!-- Password -->
+      <section class="card panel">
+        <h2>{{ 'acc.password' | t }}</h2>
+        <form (ngSubmit)="changePassword()" #pw="ngForm">
+          <label>{{ 'acc.old_password' | t }}<input type="password" name="old" [(ngModel)]="oldPassword" required autocomplete="current-password" /></label>
+          <label>{{ 'acc.new_password' | t }}<input type="password" name="new" [(ngModel)]="newPassword" required minlength="8" autocomplete="new-password" />
+            <span class="hint">{{ 'reg.password_hint' | t }}</span></label>
+          @if (pwError()) { <span class="error-text">{{ pwError() }}</span> }
+          <div class="actions">
+            <button class="btn ghost" type="submit" [disabled]="!pw.valid || pwState() === 'saving'">{{ 'acc.change' | t }}</button>
+            @if (pwState() === 'saved') { <span class="ok">✓ {{ 'acc.password_changed' | t }}</span> }
+          </div>
+        </form>
+      </section>
+    </div>
+  } @else {
+    <p class="muted">{{ 'catalog.loading' | t }}</p>
+  }
+</div>

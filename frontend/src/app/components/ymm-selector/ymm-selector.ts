@@ -15,7 +15,7 @@ import { TPipe } from '../../shared/t.pipe';
   template: `
     <div class="ymm">
       <h3>{{ 'ymm.title' | t }}</h3>
-      @if (garage.car() && !editing()) {
+      @if (garage.car() && !editing() && !addMode()) {
         <div class="saved">
           <div>
             <span class="lbl">{{ 'ymm.saved' | t }}</span>
@@ -62,6 +62,8 @@ export class YmmSelector {
   garage = inject(GarageService);
   cars = input.required<CarModel[]>();
   picked = output<GarageCar | null>();
+  /** account page: always show the pickers (to add another car) */
+  addMode = input(false);
 
   editing = signal(false);
   make = '';
@@ -93,6 +95,7 @@ export class YmmSelector {
     const car: GarageCar = { carId: row.id, make: row.make, model: row.model, year: this.year };
     this.garage.set(car);
     this.editing.set(false);
+    if (this.addMode()) { this.make = ''; this.model = ''; this.year = null; }
     this.picked.emit(car);
   }
 

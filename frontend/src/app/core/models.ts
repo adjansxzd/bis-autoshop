@@ -72,7 +72,29 @@ export interface User {
   email: string;
   first_name: string;
   last_name: string;
+  phone: string;
+  address: string;
+  preferred_language: 'en' | 'ru';
   role: 'customer' | 'manager' | 'admin';
+}
+
+/** A car saved in the user's account ("My cars"), GET /api/auth/garage/ */
+export interface SavedCar {
+  id: number;
+  car_id: number;
+  make: string;
+  model: string;
+  year: number;
+}
+
+export interface RegisterData {
+  username: string;
+  email: string;
+  password: string;
+  password2: string;
+  first_name?: string;
+  last_name?: string;
+  phone?: string;
 }
 
 export interface CartItem {

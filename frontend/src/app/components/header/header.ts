@@ -1,6 +1,8 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink, RouterLinkActive } from '@angular/router';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive } from '@angular/router';
+import { filter, map } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 import { ApiService } from '../../core/api.service';
@@ -28,6 +30,15 @@ export class Header implements OnInit {
 
   readonly adminUrl = environment.adminUrl;
   apiOnline = signal<boolean | null>(null); // null = checking
+
+  /** true on /login and /register: hide search, cart, garage etc. so nothing distracts from the form */
+  readonly minimal = toSignal(
+    this.router.events.pipe(
+      filter((e) => e instanceof NavigationEnd),
+      map(() => /^\/(login|register)(\?|$)/.test(this.router.url)),
+    ),
+    { initialValue: /^\/(login|register)(\?|$)/.test(location.pathname) },
+  );
   query = '';
 
   ngOnInit() {

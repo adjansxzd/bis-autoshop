@@ -109,6 +109,13 @@ npm start
 
 `python manage.py seed` creates **local demo accounts** (`admin`, `manager`, `customer`, password printed in the console). They exist only in your local database; never use them on a deployed server.
 
+## Customer account
+
+- **Registration** (`/register`): checks passwords match and are strong, email/username are free, phone format; the customer is signed in straight away.
+- **My account** (`/account`): name, email, phone, **default delivery address** (pre-filled at checkout), language, change password.
+- **My cars**: cars saved in the account, available on any device; one of them is "shopping for this car" and filters the catalog.
+- **Stays signed in**: the access token lives 2 hours; the site renews it automatically with the refresh token (7 days).
+
 ## Admin panel & roles
 
 | | Customer | Manager | Admin |
@@ -138,7 +145,7 @@ POST /api/cart/items/  ·  /api/orders/checkout/
 cd backend
 python manage.py test
 ```
-60 automated tests cover: health check, public catalog, filters ("Fits my car"), 3-entity search, registration, **role access** in the API, **cart → order** flow with stock reduction, **several orders per user**, **stock limits**, cancelled orders return stock, customers see only their own orders — and the **admin panel**: a customer can't open it, a manager can manage products and orders but not users, an admin can, role changes update access, "Mark as shipped" / "Cancel" actions, the low-stock filter — plus the **warehouse** (inventory): stock receipts, sales and returns always match the stock journal, no double write-off or double return, and status rules (a shipped order can't be cancelled, statuses can't go backwards).
+67 automated tests cover: **customer accounts** (registration with validation, profile, password change, saved cars, token refresh), health check, public catalog, filters ("Fits my car"), 3-entity search, registration, **role access** in the API, **cart → order** flow with stock reduction, **several orders per user**, **stock limits**, cancelled orders return stock, customers see only their own orders — and the **admin panel**: a customer can't open it, a manager can manage products and orders but not users, an admin can, role changes update access, "Mark as shipped" / "Cancel" actions, the low-stock filter — plus the **warehouse** (inventory): stock receipts, sales and returns always match the stock journal, no double write-off or double return, and status rules (a shipped order can't be cancelled, statuses can't go backwards).
 
 ## AI usage
 

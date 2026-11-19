@@ -66,7 +66,7 @@ body {
 a { color: inherit; }
 h1, h2, h3 { font-family: var(--display); letter-spacing: -0.02em; }
 
-select, input[type='text'], input[type='password'], input[type='tel'], textarea {
+select, input[type='text'], input[type='password'], input[type='tel'], input[type='email'], textarea {
   background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 10px;
   padding: 10px 12px; font: inherit; outline: none;
   &:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }

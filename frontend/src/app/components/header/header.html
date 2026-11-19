@@ -10,44 +10,51 @@
       <span class="word">Auto<b>Shop</b></span>
     </a>
 
-    <form class="search" (ngSubmit)="search()" role="search">
-      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-      <input name="q" [(ngModel)]="query" [placeholder]="'nav.search_placeholder' | t" autocomplete="off" />
-    </form>
+    <!-- sign-in / registration pages get a quiet header: logo, theme and language only -->
+    @if (!minimal()) {
+      <form class="search" (ngSubmit)="search()" role="search">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input name="q" [(ngModel)]="query" [placeholder]="'nav.search_placeholder' | t" autocomplete="off" />
+      </form>
+    }
 
     <nav class="actions">
-      <a routerLink="/" class="garage" [class.set]="garage.car()" [title]="'ymm.saved' | t">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17h14M6 17l1.5-6h9L18 17M7.5 11 9 6h6l1.5 5"/><circle cx="8" cy="17" r="2"/><circle cx="16" cy="17" r="2"/></svg>
-        <span>{{ garage.car() ? garage.label() : ('nav.no_car' | t) }}</span>
-      </a>
-
-      @if (auth.user(); as u) {
-        <!-- only managers and admins see the link to the admin panel -->
-        @if (u.role === 'manager' || u.role === 'admin') {
-          <a [href]="adminUrl" target="_blank" rel="noopener" class="icon-link admin">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg>
-            <span class="lbl">{{ 'nav.admin' | t }}</span>
+      @if (!minimal()) {
+        <a routerLink="/" class="garage" [class.set]="garage.car()" [title]="'ymm.saved' | t">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17h14M6 17l1.5-6h9L18 17M7.5 11 9 6h6l1.5 5"/><circle cx="8" cy="17" r="2"/><circle cx="16" cy="17" r="2"/></svg>
+          <span>{{ garage.car() ? garage.label() : ('nav.no_car' | t) }}</span>
+        </a>
+  
+        @if (auth.user(); as u) {
+          <!-- only managers and admins see the link to the admin panel -->
+          @if (u.role === 'manager' || u.role === 'admin') {
+            <a [href]="adminUrl" target="_blank" rel="noopener" class="icon-link admin">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg>
+              <span class="lbl">{{ 'nav.admin' | t }}</span>
+            </a>
+          }
+          <a routerLink="/orders" routerLinkActive="on" class="icon-link">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5h10M9 12h10M9 19h10M5 5h.01M5 12h.01M5 19h.01"/></svg>
+            <span class="lbl">{{ 'nav.orders' | t }}</span>
+          </a>
+          <a routerLink="/account" routerLinkActive="on" class="icon-link" [title]="'nav.account' | t">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+            <span class="lbl">{{ u.first_name || u.username }}</span>
+          </a>
+        } @else {
+          <a routerLink="/login" class="icon-link">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+            <span class="lbl">{{ 'nav.login' | t }}</span>
           </a>
         }
-        <a routerLink="/orders" routerLinkActive="on" class="icon-link">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5h10M9 12h10M9 19h10M5 5h.01M5 12h.01M5 19h.01"/></svg>
-          <span class="lbl">{{ 'nav.orders' | t }}</span>
+  
+        <a routerLink="/cart" routerLinkActive="on" class="cart" [attr.aria-label]="'nav.cart' | t">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.5L21 8H6.2"/><circle cx="10" cy="20.5" r="1"/><circle cx="17" cy="20.5" r="1"/></svg>
+          @if (cart.count() > 0) { <span class="badge">{{ cart.count() }}</span> }
         </a>
-        <button type="button" class="icon-link" (click)="logout()" [title]="'nav.logout' | t">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
-          <span class="lbl">{{ u.username }}</span>
-        </button>
       } @else {
-        <a routerLink="/login" class="icon-link">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
-          <span class="lbl">{{ 'nav.login' | t }}</span>
-        </a>
+        <a routerLink="/" class="icon-link back">← {{ 'nav.back_to_shop' | t }}</a>
       }
-
-      <a routerLink="/cart" routerLinkActive="on" class="cart" [attr.aria-label]="'nav.cart' | t">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.5L21 8H6.2"/><circle cx="10" cy="20.5" r="1"/><circle cx="17" cy="20.5" r="1"/></svg>
-        @if (cart.count() > 0) { <span class="badge">{{ cart.count() }}</span> }
-      </a>
 
       <button type="button" class="square" (click)="theme.toggle()"
               [title]="theme.theme() === 'dark' ? ('theme.to_light' | t) : ('theme.to_dark' | t)"

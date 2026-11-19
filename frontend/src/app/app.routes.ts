@@ -1,9 +1,11 @@
 import { Routes } from '@angular/router';
 
+import { AccountPage } from './pages/account/account';
 import { CartPage } from './pages/cart/cart';
 import { Catalog } from './pages/catalog/catalog';
 import { LoginPage } from './pages/login/login';
 import { OrdersPage } from './pages/orders/orders';
+import { RegisterPage } from './pages/register/register';
 import { ProductDetail } from './pages/product-detail/product-detail';
 import { Search } from './pages/search/search';
 
@@ -14,5 +16,7 @@ export const routes: Routes = [
   { path: 'cart', component: CartPage, title: 'AutoShop — Cart' },
   { path: 'orders', component: OrdersPage, title: 'AutoShop — My orders' },
   { path: 'login', component: LoginPage, title: 'AutoShop — Sign in' },
+  { path: 'register', component: RegisterPage, title: 'AutoShop — Create account' },
+  { path: 'account', component: AccountPage, title: 'AutoShop — My account' },
   { path: '**', redirectTo: '' },
 ];

@@ -7,10 +7,13 @@ Auth: JWT. Get a token from `POST /api/auth/login/`, then send header `Authoriza
 | Method | Endpoint | Who | What it does |
 |---|---|---|---|
 | GET | `/health/` | anyone | API status (frontend uses it for the "API connected" badge) |
-| POST | `/auth/register/` | anyone | Create customer account `{username, email, password}` |
+| POST | `/auth/register/` | anyone | Create customer account `{username, email, password, password2, first_name?, last_name?, phone?}` → returns user + JWT tokens (signed in at once) |
 | POST | `/auth/login/` | anyone | Returns `{access, refresh}` JWT tokens |
-| POST | `/auth/refresh/` | anyone | New access token from refresh token |
-| GET / PATCH | `/auth/me/` | logged in | My profile |
+| POST | `/auth/refresh/` | anyone | New access token from refresh token (the site does this automatically, so users stay signed in up to 7 days) |
+| GET / PATCH | `/auth/me/` | logged in | My profile: name, email, phone, delivery address, language (role can't be changed) |
+| POST | `/auth/password/` | logged in | Change password `{old_password, new_password}` |
+| GET / POST | `/auth/garage/` | logged in | My cars: list / save `{car_id, year}` (year must be in the model's range) |
+| DELETE | `/auth/garage/{id}/` | logged in | Remove a saved car (only your own) |
 | GET | `/products/` | anyone | Product list, paginated (12 per page) |
 | GET | `/products/{id}/` | anyone | One product |
 | POST / PUT / PATCH / DELETE | `/products/…` | manager, admin | Product CRUD (admin panel) |
