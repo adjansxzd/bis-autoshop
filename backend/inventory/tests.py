@@ -167,7 +167,8 @@ class SeedTests(JournalAssertions, TestCase):
 
         call_command("seed", "--reset", stdout=StringIO())
 
-        self.assertEqual(Product.objects.count(), 21)
+        from catalog.management.commands.seed_data import PRODUCTS
+        self.assertEqual(Product.objects.count(), len(PRODUCTS))
         self.assertEqual(Order.objects.count(), 0)
         self.assert_balances_match_journal()
 

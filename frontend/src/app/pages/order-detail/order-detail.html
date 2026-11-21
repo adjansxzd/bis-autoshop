@@ -1,0 +1,123 @@
+<div class="container wrap">
+  <a routerLink="/orders" class="back">← {{ 'orders.title' | t }}</a>
+
+  @if (notFound()) {
+    <div class="card empty"><p>{{ 'od.not_found' | t }}</p></div>
+  } @else if (order(); as o) {
+    <!-- confirmation right after checkout -->
+    @if (showThanks() && o.status !== 'cancelled') {
+      <div class="card thanks">
+        <div class="tick">✓</div>
+        <div>
+          <h2>{{ 'od.thanks' | t }} #{{ o.id }}</h2>
+          <p>{{ o.can_pay ? ('od.thanks_pay' | t) : (o.delivery_method === 'pickup' ? ('od.thanks_pickup' | t) : ('od.thanks_courier' | t)) }}</p>
+        </div>
+      </div>
+    }
+
+    <header class="head">
+      <div>
+        <h1>{{ 'orders.order' | t }} #{{ o.id }}</h1>
+        <p class="muted">{{ o.created_at | date: 'dd.MM.yyyy HH:mm' }}</p>
+      </div>
+      <span class="status" [attr.data-s]="o.status">{{ statusKey(o, o.status) | t }}</span>
+    </header>
+
+    <!-- status timeline -->
+    <section class="card timeline" [class.cancelled]="o.status === 'cancelled'">
+      <ol>
+        @for (s of steps(); track s.status; let last = $last) {
+          <li [class.done]="s.done">
+            <span class="dot">@if (s.done) { ✓ }</span>
+            <b>{{ statusKey(o, s.status) | t }}</b>
+            <small>{{ s.at ? (s.at | date: 'dd.MM HH:mm') : '' }}</small>
+          </li>
+        }
+      </ol>
+      @if (o.status === 'cancelled') {
+        <p class="cancel-note">✕ {{ 'status.cancelled' | t }} — {{ noteText(o.events[o.events.length - 1].note, null) }}</p>
+      }
+    </section>
+
+    <div class="grid">
+      <div class="col">
+        <!-- items -->
+        <section class="card box">
+          <h3>{{ 'od.items' | t }}</h3>
+          <table>
+            @for (it of o.items; track it.id) {
+              <tr>
+                <td><a [routerLink]="['/product', it.product]">{{ it.product_name }}</a></td>
+                <td class="q">{{ it.unit_price | kzt }} × {{ it.quantity }}</td>
+                <td class="r">{{ it.subtotal | kzt }}</td>
+              </tr>
+            }
+          </table>
+          <dl class="totals">
+            <div><dt>{{ 'co.items' | t }}</dt><dd>{{ o.items_total | kzt }}</dd></div>
+            <div><dt>{{ 'co.delivery' | t }}</dt><dd>{{ +o.delivery_cost ? (o.delivery_cost | kzt) : ('co.free' | t) }}</dd></div>
+            <div class="grand"><dt>{{ 'cart.total' | t }}</dt><dd>{{ o.total | kzt }}</dd></div>
+          </dl>
+        </section>
+
+        <!-- history -->
+        <section class="card box">
+          <h3>{{ 'od.history' | t }}</h3>
+          <ul class="history">
+            @for (e of o.events; track $index) {
+              <li><time>{{ e.created_at | date: 'dd.MM.yyyy HH:mm' }}</time>
+                <b>{{ statusKey(o, e.status) | t }}</b>
+                <span>{{ noteText(e.note, e.by) }}</span></li>
+            }
+          </ul>
+        </section>
+      </div>
+
+      <aside class="col">
+        <!-- actions -->
+        @if (o.can_pay || o.can_cancel || o.status !== 'new') {
+          <section class="card box actions">
+            @if (o.can_pay) {
+              <p class="muted small">{{ 'od.pay_hint' | t }}</p>
+              <button class="btn block" (click)="pay()" [disabled]="busy()">{{ 'od.pay' | t }} {{ o.total | kzt }}</button>
+            }
+            @if (o.can_cancel && !confirmCancel()) {
+              <button class="btn ghost block" (click)="confirmCancel.set(true)">{{ 'od.cancel' | t }}</button>
+            }
+            @if (confirmCancel()) {
+              <div class="confirm">
+                <p><b>{{ 'od.cancel_q' | t }}</b><br /><span class="muted small">{{ 'od.cancel_hint' | t }}</span></p>
+                <input type="text" [(ngModel)]="reason" maxlength="200" [placeholder]="'od.reason' | t" />
+                <div class="row">
+                  <button class="btn danger" (click)="cancel()" [disabled]="busy()">{{ 'od.cancel_yes' | t }}</button>
+                  <button class="btn ghost" (click)="confirmCancel.set(false)">{{ 'od.keep' | t }}</button>
+                </div>
+              </div>
+            }
+            @if (!o.can_cancel && o.status !== 'cancelled' && o.status !== 'delivered') {
+              <p class="muted small">{{ 'od.cannot_cancel' | t }}</p>
+            }
+            <button class="btn ghost block" (click)="reorder()">{{ 'od.reorder' | t }}</button>
+            @if (reorderMsg()) { <p class="error-text">{{ 'od.reorder_none' | t }}</p> }
+            @if (error()) { <p class="error-text">{{ error() }}</p> }
+          </section>
+        }
+
+        <!-- delivery & payment -->
+        <section class="card box info">
+          <h3>{{ 'co.delivery' | t }}</h3>
+          <p><b>{{ (o.delivery_method === 'pickup' ? 'co.pickup' : 'co.courier') | t }}</b><br />{{ o.shipping_address }}<br />{{ o.phone }}</p>
+          @if (o.comment) { <p class="muted small">“{{ o.comment }}”</p> }
+          <h3>{{ 'co.payment' | t }}</h3>
+          <p><b>{{ (o.payment_method === 'card' ? 'co.card' : 'co.cash') | t }}</b><br />
+            @if (o.paid_at) { <span class="ok">✓ {{ 'od.paid_at' | t }} {{ o.paid_at | date: 'dd.MM.yyyy HH:mm' }}</span> }
+            @else if (o.status === 'cancelled') { <span class="muted">—</span> }
+            @else { <span class="muted">{{ o.payment_method === 'card' ? ('od.not_paid' | t) : ('od.pay_on_delivery' | t) }}</span> }
+          </p>
+        </section>
+      </aside>
+    </div>
+  } @else {
+    <p class="muted">{{ 'catalog.loading' | t }}</p>
+  }
+</div>

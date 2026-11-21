@@ -44,6 +44,37 @@
       @for (b of brands(); track b.id) { <option [ngValue]="b.id">{{ b.name }}</option> }
     </select>
 
+    <h4>{{ 'filter.price' | t }} <small>₸</small></h4>
+    @if (priceBounds().max > priceBounds().min) {
+      <div class="price">
+        <div class="price-inputs">
+          <input type="number" [min]="priceBounds().min" [max]="priceBounds().max" step="500"
+                 [placeholder]="priceBounds().min" [ngModel]="filters.min_price" (change)="setPrice('min', $any($event.target).value)"
+                 [attr.aria-label]="'filter.price_from' | t" />
+          <span>—</span>
+          <input type="number" [min]="priceBounds().min" [max]="priceBounds().max" step="500"
+                 [placeholder]="priceBounds().max" [ngModel]="filters.max_price" (change)="setPrice('max', $any($event.target).value)"
+                 [attr.aria-label]="'filter.price_to' | t" />
+        </div>
+        <!-- two range inputs on one track = a dual slider -->
+        <div class="dual">
+          <div class="track"><div class="fill"
+               [style.left.%]="(((filters.min_price ?? priceBounds().min) - priceBounds().min) / (priceBounds().max - priceBounds().min)) * 100"
+               [style.right.%]="100 - (((filters.max_price ?? priceBounds().max) - priceBounds().min) / (priceBounds().max - priceBounds().min)) * 100"></div></div>
+          <input type="range" [min]="priceBounds().min" [max]="priceBounds().max" step="500"
+                 [value]="filters.min_price ?? priceBounds().min" (change)="setPrice('min', $any($event.target).value)"
+                 [attr.aria-label]="'filter.price_from' | t" />
+          <input type="range" [min]="priceBounds().min" [max]="priceBounds().max" step="500"
+                 [value]="filters.max_price ?? priceBounds().max" (change)="setPrice('max', $any($event.target).value)"
+                 [attr.aria-label]="'filter.price_to' | t" />
+        </div>
+        <div class="price-hint">
+          {{ (filters.min_price ?? priceBounds().min) | kzt }} – {{ (filters.max_price ?? priceBounds().max) | kzt }}
+          @if (filters.min_price != null || filters.max_price != null) { <button type="button" (click)="clearPrice()">✕</button> }
+        </div>
+      </div>
+    }
+
     <label class="check">
       <input type="checkbox" [(ngModel)]="filters.in_stock" (ngModelChange)="apply()" />
       {{ 'filter.in_stock' | t }}
@@ -69,6 +100,8 @@
           <option value="-created_at">{{ 'sort.new' | t }}</option>
           <option value="price">{{ 'sort.price_asc' | t }}</option>
           <option value="-price">{{ 'sort.price_desc' | t }}</option>
+          <option value="-rating_avg">{{ 'sort.rating' | t }}</option>
+          <option value="-rating_count">{{ 'sort.reviews' | t }}</option>
         </select>
       </label>
     </div>

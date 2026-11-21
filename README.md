@@ -109,6 +109,24 @@ npm start
 
 `python manage.py seed` creates **local demo accounts** (`admin`, `manager`, `customer`, password printed in the console). They exist only in your local database; never use them on a deployed server.
 
+## Order process (start to finish)
+
+1. **Cart → checkout:** choose **courier** (1 500 ₸, free from 50 000 ₸) or **pickup** (free), payment **card online (demo)** or **on delivery**, phone, comment. Totals update live.
+2. **Order page** (`/orders/{id}`): "Thank you" confirmation, **status timeline** New → Paid → Shipped (Ready for pickup) → Delivered, items, delivery & payment details, full **history** (who changed what and when).
+3. **Payment:** "Pay" button for card orders — a demo payment, no card data, no real money.
+4. **Cancellation:** the customer can cancel while the order is new or paid (reason optional); items go back to the warehouse, a paid order is marked refunded. After shipping, cancelling is blocked.
+5. **Shop side:** managers move orders forward in the admin panel (statuses only go forward; history is recorded).
+6. **Order again:** puts a past order's items back into the cart.
+
+## Catalog
+
+- **12 categories, 22 car models, 64 parts** (demo data in `backend/catalog/management/commands/seed_data.py`).
+- **Photos:** upload in the admin panel, or put files named by SKU into `backend/catalog/seed_images/` (`BR-001.jpg`) and run `python manage.py seed`. Parts without a photo show a category icon.
+- **Product page:** description, OEM numbers, specs table, compatible cars.
+- **Filters:** category, brand, **price range** (slider + inputs), in stock, "Fits my car"; sort by price, newest, **best rated**, most reviewed.
+- **Ratings & reviews:** only customers who **bought** a part can review it (once; edit/delete own). Average stars on cards; 5★…1★ breakdown on the product page; managers moderate reviews in the admin panel.
+- **My orders:** search by order number, part name or SKU, filter by status.
+
 ## Customer account
 
 - **Registration** (`/register`): checks passwords match and are strong, email/username are free, phone format; the customer is signed in straight away.
@@ -145,7 +163,7 @@ POST /api/cart/items/  ·  /api/orders/checkout/
 cd backend
 python manage.py test
 ```
-67 automated tests cover: **customer accounts** (registration with validation, profile, password change, saved cars, token refresh), health check, public catalog, filters ("Fits my car"), 3-entity search, registration, **role access** in the API, **cart → order** flow with stock reduction, **several orders per user**, **stock limits**, cancelled orders return stock, customers see only their own orders — and the **admin panel**: a customer can't open it, a manager can manage products and orders but not users, an admin can, role changes update access, "Mark as shipped" / "Cancel" actions, the low-stock filter — plus the **warehouse** (inventory): stock receipts, sales and returns always match the stock journal, no double write-off or double return, and status rules (a shipped order can't be cancelled, statuses can't go backwards).
+87 automated tests cover: **order process** (delivery fees, pickup, demo payment, cancellation by the customer with stock return, status rules, history, reorder), **catalog** (photos, specs, OEM search, price range, sorting by rating), **reviews** (only buyers, once, 1–5 stars, edit/delete own, moderation), **order search**, **customer accounts** (registration with validation, profile, password change, saved cars, token refresh), health check, public catalog, filters ("Fits my car"), 3-entity search, registration, **role access** in the API, **cart → order** flow with stock reduction, **several orders per user**, **stock limits**, cancelled orders return stock, customers see only their own orders — and the **admin panel**: a customer can't open it, a manager can manage products and orders but not users, an admin can, role changes update access, "Mark as shipped" / "Cancel" actions, the low-stock filter — plus the **warehouse** (inventory): stock receipts, sales and returns always match the stock journal, no double write-off or double return, and status rules (a shipped order can't be cancelled, statuses can't go backwards).
 
 ## AI usage
 

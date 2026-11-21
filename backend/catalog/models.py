@@ -1,3 +1,5 @@
+from django.conf import settings
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 
@@ -63,6 +65,12 @@ class Product(models.Model):
     # it is refreshed by inventory.services.sync_product_stock().
     stock = models.PositiveIntegerField(default=0)
     image_url = models.URLField(blank=True)
+    image = models.ImageField(upload_to="products/", blank=True, help_text="Product photo (JPG/PNG/WebP)")
+    oem_numbers = models.CharField(
+        max_length=255, blank=True, help_text="Original manufacturer part numbers, comma-separated (searchable)"
+    )
+    # [{"en": "Diameter", "ru": "Диаметр", "value": "296 mm"}, ...] — shown as a table on the product page
+    specs = models.JSONField(default=list, blank=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -79,3 +87,24 @@ class Product(models.Model):
 
     def __str__(self):
         return f"{self.sku} — {self.name_en}"
+
+
+class Review(models.Model):
+    """A customer's rating (1–5) and comment. Only people who bought the product may review it, once."""
+
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="reviews")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="reviews")
+    rating = models.PositiveSmallIntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
+    text = models.TextField(max_length=2000, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(fields=["product", "user"], name="uniq_review_per_user"),
+            models.CheckConstraint(condition=models.Q(rating__gte=1, rating__lte=5), name="review_rating_1_5"),
+        ]
+
+    def __str__(self):
+        return f"{self.rating}★ {self.product.sku} by {self.user}"

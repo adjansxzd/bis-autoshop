@@ -36,10 +36,42 @@ export interface Product {
   stock: number;
   in_stock: boolean;
   image_url: string;
+  image: string | null; // uploaded photo URL (null → show the category icon)
+  oem_numbers: string;
+  specs: Spec[];
+  rating_avg: number | null;
+  rating_count: number;
   is_active: boolean;
   category: Category;
   brand: Brand;
   compatible_cars: CarModel[];
+}
+
+export interface Spec {
+  en: string;
+  ru: string;
+  value: string;
+}
+
+export interface Review {
+  id: number;
+  rating: number;
+  text: string;
+  author: string;
+  is_mine: boolean;
+  created_at: string;
+}
+
+export interface ReviewsResponse {
+  summary: { avg: number | null; count: number; distribution: Record<string, number> };
+  can_review: boolean;
+  my_review: Review | null;
+  results: Review[];
+}
+
+export interface PriceRange {
+  min: string | null;
+  max: string | null;
 }
 
 export interface Page<T> {
@@ -61,6 +93,8 @@ export interface ProductQuery {
   brand?: number | null;
   car?: number | null;
   in_stock?: boolean;
+  min_price?: number | null;
+  max_price?: number | null;
   search?: string;
   ordering?: string;
   page?: number;
@@ -119,14 +153,46 @@ export interface OrderItem {
   subtotal: string;
 }
 
+export type OrderStatus = 'new' | 'paid' | 'shipped' | 'delivered' | 'cancelled';
+
+export interface OrderEvent {
+  status: OrderStatus;
+  note: string;
+  by: 'customer' | 'shop' | null;
+  created_at: string;
+}
+
 export interface Order {
   id: number;
-  status: 'new' | 'paid' | 'shipped' | 'delivered' | 'cancelled';
+  status: OrderStatus;
+  delivery_method: 'courier' | 'pickup';
+  payment_method: 'card' | 'cash';
   shipping_address: string;
   phone: string;
+  comment: string;
+  items_total: string;
+  delivery_cost: string;
   total: string;
+  paid_at: string | null;
   items: OrderItem[];
+  events: OrderEvent[];
+  can_pay: boolean;
+  can_cancel: boolean;
   created_at: string;
+}
+
+export interface CheckoutData {
+  delivery_method: 'courier' | 'pickup';
+  payment_method: 'card' | 'cash';
+  shipping_address: string;
+  phone: string;
+  comment: string;
+}
+
+export interface DeliveryOptions {
+  courier_price: string;
+  free_from: string;
+  pickup_address: string;
 }
 
 /** The car the user picked in the Year / Make / Model selector ("My garage"). */

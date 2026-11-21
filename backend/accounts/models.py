@@ -6,7 +6,7 @@ MANAGERS_GROUP = "Managers"
 
 # What a store manager may do in the admin panel: run the catalog and the orders, nothing else.
 MANAGER_PERMISSIONS = {
-    "catalog": ["product", "category", "brand", "carmodel"],          # full CRUD
+    "catalog": ["product", "category", "brand", "carmodel", "review"],  # full CRUD + review moderation
     "orders": ["order"],                                              # view + change status
     "inventory": ["warehouse", "warehousestock", "stockreceipt", "stockreceiptitem", "stockmovement"],
 }
@@ -15,6 +15,7 @@ MANAGER_ACTIONS = {
     "category": ["view", "add", "change", "delete"],
     "brand": ["view", "add", "change", "delete"],
     "carmodel": ["view", "add", "change", "delete"],
+    "review": ["view", "delete"],
     "order": ["view", "change"],
     # warehouse (Daulet's inventory app): managers post stock receipts and read balances / the journal
     "warehouse": ["view"],

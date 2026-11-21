@@ -2,7 +2,8 @@ from django import forms
 from django.contrib import admin, messages
 from django.core.exceptions import ValidationError
 from django.db.models import Count
-from django.utils.html import format_html
+from django.utils.html import format_html, format_html_join
+from django.utils.timezone import localtime
 
 from .models import Cart, CartItem, Order, OrderItem
 from .services import change_order_status, validate_status_transition
@@ -47,14 +48,19 @@ class OrderAdminForm(forms.ModelForm):
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
     form = OrderAdminForm
-    list_display = ("id", "user", "status_badge", "items_count", "total", "phone", "created_at")
+    list_display = ("id", "user", "status_badge", "items_count", "total", "delivery_method", "payment_method", "created_at")
     list_display_links = ("id", "user")
-    list_filter = ("status", "created_at")
+    list_filter = ("status", "delivery_method", "payment_method", "created_at")
     search_fields = ("id", "user__username", "user__email", "phone", "shipping_address")
     date_hierarchy = "created_at"
     list_per_page = 25
-    readonly_fields = ("user", "total", "created_at")
-    fields = ("user", "status", "shipping_address", "phone", "total", "created_at")
+    readonly_fields = ("user", "delivery_method", "payment_method", "items_total", "delivery_cost", "total", "paid_at", "created_at", "history")
+    fieldsets = (
+        (None, {"fields": ("user", "status", "created_at")}),
+        ("Delivery", {"fields": ("delivery_method", "shipping_address", "phone", "comment")}),
+        ("Payment", {"fields": ("payment_method", "items_total", "delivery_cost", "total", "paid_at")}),
+        ("Status history", {"fields": ("history",)}),
+    )
     inlines = [OrderItemInline]
     actions = ["mark_paid", "mark_shipped", "mark_delivered", "mark_cancelled"]
 
@@ -73,6 +79,16 @@ class OrderAdmin(admin.ModelAdmin):
             color, obj.get_status_display(),
         )
 
+    @admin.display(description="History")
+    def history(self, obj):
+        """Read-only table of status changes (shown as a field, not an inline, so the form stays simple)."""
+        rows = format_html_join(
+            "", "<tr><td>{}</td><td><b>{}</b></td><td>{}</td><td>{}</td></tr>",
+            ((localtime(e.created_at).strftime("%d.%m.%Y %H:%M"), e.get_status_display(), e.by or "—", e.note)
+             for e in obj.events.select_related("by")),
+        )
+        return format_html('<table style="min-width:520px"><tr><th>When</th><th>Status</th><th>By</th><th>Note</th></tr>{}</table>', rows) if rows else "—"
+
     @admin.display(description="Items", ordering="n_items")
     def items_count(self, obj):
         return obj.n_items
@@ -82,7 +98,7 @@ class OrderAdmin(admin.ModelAdmin):
             new_status = obj.status
             obj.status = form.initial["status"]
             # Same rules as the API: validates the transition and returns stock on cancel.
-            change_order_status(obj, new_status, request.user)
+            change_order_status(obj, new_status, request.user, note="Changed in the admin panel")
             obj.status = new_status
         super().save_model(request, obj, form, change)
 
@@ -92,7 +108,7 @@ class OrderAdmin(admin.ModelAdmin):
         done, skipped = 0, []
         for order in queryset:
             try:
-                change_order_status(order, status, request.user)
+                change_order_status(order, status, request.user, note="Changed in the admin panel")
                 done += 1
             except ValidationError as error:
                 skipped.append(f"#{order.pk}: {' '.join(error.messages)}")

@@ -47,6 +47,71 @@ const DICT: Record<string, Record<Lang, string>> = {
   'sort.new': { en: 'Newest', ru: 'Новинки' },
   'sort.price_asc': { en: 'Price: low to high', ru: 'Цена: по возрастанию' },
   'sort.price_desc': { en: 'Price: high to low', ru: 'Цена: по убыванию' },
+  'sort.rating': { en: 'Best rated', ru: 'Высокий рейтинг' },
+  'sort.reviews': { en: 'Most reviewed', ru: 'Больше отзывов' },
+  'filter.price': { en: 'Price', ru: 'Цена' },
+  'filter.price_from': { en: 'Price from', ru: 'Цена от' },
+  'filter.price_to': { en: 'Price to', ru: 'Цена до' },
+  'product.oem': { en: 'OEM numbers', ru: 'OEM-номера' },
+  'reviews.title': { en: 'Reviews', ru: 'Отзывы' },
+  'reviews.count': { en: 'reviews', ru: 'отзывов' },
+  'reviews.none': { en: 'No reviews yet.', ru: 'Отзывов пока нет.' },
+  'reviews.be_first': { en: 'Bought this part? Be the first to review it.', ru: 'Купили эту деталь? Оставьте первый отзыв.' },
+  'reviews.write': { en: 'Write a review', ru: 'Написать отзыв' },
+  'reviews.your_rating': { en: 'Your rating', ru: 'Ваша оценка' },
+  'reviews.placeholder': { en: 'Did it fit? How does it work? (optional)', ru: 'Подошла ли деталь? Как работает? (необязательно)' },
+  'reviews.publish': { en: 'Publish', ru: 'Опубликовать' },
+  'reviews.cancel': { en: 'Cancel', ru: 'Отмена' },
+  'reviews.edit': { en: 'Edit', ru: 'Изменить' },
+  'reviews.delete': { en: 'Delete', ru: 'Удалить' },
+  'reviews.you': { en: 'your review', ru: 'ваш отзыв' },
+  'reviews.yours_done': { en: 'Thanks — your review is below.', ru: 'Спасибо — ваш отзыв ниже.' },
+  'reviews.login_hint': { en: 'to review parts you bought.', ru: 'чтобы оценивать купленные детали.' },
+  'reviews.buy_first': { en: 'Only customers who bought this part can review it.', ru: 'Отзыв могут оставить только покупатели этой детали.' },
+  // checkout
+  'co.delivery': { en: 'Delivery', ru: 'Доставка' },
+  'co.courier': { en: 'Courier', ru: 'Курьер' },
+  'co.courier_hint': { en: '1–2 days, free from', ru: '1–2 дня, бесплатно от' },
+  'co.pickup': { en: 'Pickup from the shop', ru: 'Самовывоз из магазина' },
+  'co.free': { en: 'Free', ru: 'Бесплатно' },
+  'co.payment': { en: 'Payment', ru: 'Оплата' },
+  'co.card': { en: 'Card online', ru: 'Картой онлайн' },
+  'co.card_hint': { en: 'Demo payment — no real money is charged', ru: 'Демо-оплата — деньги не списываются' },
+  'co.cash': { en: 'On delivery', ru: 'При получении' },
+  'co.cash_hint': { en: 'Cash or card when you receive the order', ru: 'Наличными или картой при получении' },
+  'co.comment': { en: 'Comment', ru: 'Комментарий' },
+  'co.comment_ph': { en: 'e.g. call before delivery (optional)', ru: 'например, позвоните перед доставкой (необязательно)' },
+  'co.items': { en: 'Items', ru: 'Товары' },
+  'co.add_for_free': { en: 'Add for free delivery:', ru: 'До бесплатной доставки:' },
+  'co.place_and_pay': { en: 'Place order and pay', ru: 'Оформить и оплатить' },
+  // order page
+  'od.not_found': { en: 'Order not found.', ru: 'Заказ не найден.' },
+  'od.thanks': { en: 'Thank you! Order placed', ru: 'Спасибо! Заказ оформлен' },
+  'od.thanks_pay': { en: 'One step left — pay for the order below.', ru: 'Остался один шаг — оплатите заказ ниже.' },
+  'od.thanks_courier': { en: 'We will call you to confirm the delivery time.', ru: 'Мы позвоним, чтобы согласовать время доставки.' },
+  'od.thanks_pickup': { en: 'We will tell you when it is ready for pickup.', ru: 'Сообщим, когда заказ будет готов к выдаче.' },
+  'od.items': { en: 'Items', ru: 'Товары' },
+  'od.history': { en: 'History', ru: 'История' },
+  'od.by_customer': { en: 'you', ru: 'вы' },
+  'od.by_shop': { en: 'shop', ru: 'магазин' },
+  'od.pay': { en: 'Pay', ru: 'Оплатить' },
+  'od.pay_hint': { en: 'Demo payment: no card details are needed and no money is charged.', ru: 'Демо-оплата: данные карты не нужны, деньги не списываются.' },
+  'od.cancel': { en: 'Cancel order', ru: 'Отменить заказ' },
+  'od.cancel_q': { en: 'Cancel this order?', ru: 'Отменить этот заказ?' },
+  'od.cancel_hint': { en: 'The items go back to stock. A paid order is refunded.', ru: 'Товары вернутся на склад. Оплаченный заказ будет возвращён.' },
+  'od.reason': { en: 'Reason (optional)', ru: 'Причина (необязательно)' },
+  'od.cancel_yes': { en: 'Yes, cancel', ru: 'Да, отменить' },
+  'od.keep': { en: 'Keep order', ru: 'Оставить' },
+  'od.cannot_cancel': { en: 'The order has been shipped and can no longer be cancelled.', ru: 'Заказ уже отправлен, отменить его нельзя.' },
+  'od.reorder': { en: 'Order again', ru: 'Повторить заказ' },
+  'od.reorder_none': { en: 'These items are out of stock right now.', ru: 'Этих товаров сейчас нет в наличии.' },
+  'od.paid_at': { en: 'Paid', ru: 'Оплачено' },
+  'od.not_paid': { en: 'Not paid yet', ru: 'Ещё не оплачен' },
+  'od.pay_on_delivery': { en: 'Pay when you receive it', ru: 'Оплата при получении' },
+  'orders.search': { en: 'Search by order №, part name or SKU', ru: 'Поиск по № заказа, названию или артикулу' },
+  'orders.all': { en: 'All', ru: 'Все' },
+  'orders.nothing_found': { en: 'No orders match your search.', ru: 'По вашему запросу заказов нет.' },
+  'orders.more': { en: 'Show more', ru: 'Показать ещё' },
   'catalog.found': { en: 'parts', ru: 'деталей' },
   'catalog.empty': { en: 'No parts match these filters.', ru: 'По этим фильтрам ничего не найдено.' },
   'catalog.loading': { en: 'Loading…', ru: 'Загрузка…' },
@@ -96,6 +161,12 @@ const DICT: Record<string, Record<Lang, string>> = {
   'status.shipped': { en: 'Shipped', ru: 'Отправлен' },
   'status.delivered': { en: 'Delivered', ru: 'Доставлен' },
   'status.cancelled': { en: 'Cancelled', ru: 'Отменён' },
+  'status.ready': { en: 'Ready for pickup', ru: 'Готов к выдаче' },
+  'note.placed': { en: 'Order placed', ru: 'Заказ оформлен' },
+  'note.paid_online': { en: 'Paid online (demo payment)', ru: 'Оплачено онлайн (демо-оплата)' },
+  'note.by_shop': { en: 'Updated by the shop', ru: 'Обновлено магазином' },
+  'note.cancelled': { en: 'Cancelled by you', ru: 'Отменён вами' },
+  'note.refund': { en: 'refund issued', ru: 'деньги возвращены' },
   // login
   'login.title': { en: 'Sign in', ru: 'Вход' },
   'login.username': { en: 'Username', ru: 'Логин' },
@@ -171,6 +242,15 @@ export class I18nService {
 
   t(key: string): string {
     return DICT[key]?.[this.lang()] ?? key;
+  }
+
+  /** "1 review / 2 reviews", "1 отзыв / 3 отзыва / 5 отзывов" */
+  reviewsWord(n: number): string {
+    if (this.lang() === 'en') return n === 1 ? 'review' : 'reviews';
+    const d10 = n % 10, d100 = n % 100;
+    if (d10 === 1 && d100 !== 11) return 'отзыв';
+    if (d10 >= 2 && d10 <= 4 && (d100 < 12 || d100 > 14)) return 'отзыва';
+    return 'отзывов';
   }
 
   /** Picks name_en / name_ru (or description_en / description_ru) from an API object. */

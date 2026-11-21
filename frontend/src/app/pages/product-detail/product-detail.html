@@ -5,11 +5,18 @@
     <div class="state">{{ 'catalog.error' | t }}</div>
   } @else if (product(); as p) {
     <article class="detail">
-      <div class="visual card"><app-part-icon [name]="p.category.icon" [size]="140" /></div>
+      <div class="visual card">
+        @if (p.image) { <img [src]="p.image | photo" [alt]="p | loc: 'name'" /> }
+        @else { <app-part-icon [name]="p.category.icon" [size]="140" /> }
+      </div>
 
       <div class="info">
         <div class="meta"><span>{{ p.brand.name }}</span> · <span class="mono">SKU {{ p.sku }}</span></div>
         <h1>{{ p | loc: 'name' }}</h1>
+        @if (p.rating_count) {
+          <a class="rating-link" href="#reviews"><app-stars [value]="p.rating_avg ?? 0" [size]="16" />
+            <b>{{ p.rating_avg }}</b> · {{ p.rating_count }} {{ i18n.reviewsWord(p.rating_count) }}</a>
+        }
 
         @if (garage.car(); as car) {
           <div class="fit" [class.no]="!garage.fits(p.compatible_cars)">
@@ -40,6 +47,12 @@
         <dl class="specs">
           <div><dt>{{ 'product.brand' | t }}</dt><dd>{{ p.brand.name }} · {{ p.brand.country }}</dd></div>
           <div><dt>{{ 'product.category' | t }}</dt><dd>{{ p.category | loc: 'name' }}</dd></div>
+          @if (p.oem_numbers) {
+            <div><dt>{{ 'product.oem' | t }}</dt><dd class="mono">{{ p.oem_numbers }}</dd></div>
+          }
+          @for (s of p.specs; track $index) {
+            <div><dt>{{ specLabel(s) }}</dt><dd>{{ specValue(s) }}</dd></div>
+          }
         </dl>
 
         <h4>{{ 'product.fits' | t }}</h4>
@@ -50,6 +63,71 @@
         </ul>
       </div>
     </article>
+
+    <!-- ===== Reviews ===== -->
+    <section class="reviews" id="reviews">
+      <h2>{{ 'reviews.title' | t }}</h2>
+      @if (reviews(); as r) {
+        <div class="rev-grid">
+          <div class="card summary">
+            @if (r.summary.count) {
+              <div class="big">{{ r.summary.avg }}</div>
+              <app-stars [value]="r.summary.avg ?? 0" [size]="20" />
+              <div class="muted">{{ r.summary.count }} {{ i18n.reviewsWord(r.summary.count) }}</div>
+              <ul class="bars">
+                @for (b of bars(); track b.stars) {
+                  <li><span>{{ b.stars }}★</span><i><b [style.width.%]="b.pct"></b></i><em>{{ b.n }}</em></li>
+                }
+              </ul>
+            } @else {
+              <p class="muted">{{ 'reviews.none' | t }}</p>
+            }
+
+            <!-- who may write: only customers who bought this part -->
+            @if (editing()) {
+              <form class="write" (ngSubmit)="saveReview()">
+                <label>{{ 'reviews.your_rating' | t }}</label>
+                <app-stars [value]="myRating" [size]="26" [editable]="true" (valueChange)="myRating = $event" />
+                <textarea name="text" rows="4" [(ngModel)]="myText" maxlength="2000" [placeholder]="'reviews.placeholder' | t"></textarea>
+                @if (reviewError()) { <div class="error-text">{{ reviewError() }}</div> }
+                <div class="row">
+                  <button class="btn" type="submit" [disabled]="!myRating || reviewBusy()">{{ 'reviews.publish' | t }}</button>
+                  <button class="btn ghost" type="button" (click)="editing.set(false)">{{ 'reviews.cancel' | t }}</button>
+                </div>
+              </form>
+            } @else if (r.can_review) {
+              <button class="btn block" (click)="startReview()">{{ 'reviews.write' | t }}</button>
+            } @else if (r.my_review) {
+              <p class="muted small">{{ 'reviews.yours_done' | t }}</p>
+            } @else if (!auth.isLoggedIn()) {
+              <p class="muted small"><a routerLink="/login" [queryParams]="{ next: '/product/' + p.id }">{{ 'nav.login' | t }}</a> — {{ 'reviews.login_hint' | t }}</p>
+            } @else {
+              <p class="muted small">{{ 'reviews.buy_first' | t }}</p>
+            }
+          </div>
+
+          <ul class="list">
+            @for (rv of r.results; track rv.id) {
+              <li class="card review" [class.mine]="rv.is_mine">
+                <header>
+                  <span class="avatar">{{ rv.author.charAt(0).toUpperCase() }}</span>
+                  <div><strong>{{ rv.author }}</strong> @if (rv.is_mine) { <em>{{ 'reviews.you' | t }}</em> }
+                    <div class="muted small">{{ rv.created_at | date: 'dd.MM.yyyy' }}</div></div>
+                  <app-stars [value]="rv.rating" [size]="15" />
+                </header>
+                @if (rv.text) { <p>{{ rv.text }}</p> }
+                @if (rv.is_mine && !editing()) {
+                  <div class="own"><button type="button" (click)="startReview()">{{ 'reviews.edit' | t }}</button>
+                    <button type="button" (click)="deleteReview()">{{ 'reviews.delete' | t }}</button></div>
+                }
+              </li>
+            } @empty {
+              <li class="muted empty">{{ 'reviews.be_first' | t }}</li>
+            }
+          </ul>
+        </div>
+      }
+    </section>
   } @else {
     <div class="state">{{ 'catalog.loading' | t }}</div>
   }

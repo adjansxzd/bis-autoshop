@@ -6,16 +6,22 @@ import { CartService, apiError } from '../../core/cart.service';
 import { GarageService } from '../../core/garage.service';
 import { Product } from '../../core/models';
 import { PartIcon } from '../../shared/part-icon';
+import { PhotoPipe } from '../../shared/photo';
+import { Stars } from '../../shared/stars';
 import { KztPipe, LocPipe, TPipe } from '../../shared/t.pipe';
 
 @Component({
   selector: 'app-product-card',
-  imports: [RouterLink, PartIcon, TPipe, LocPipe, KztPipe],
+  imports: [RouterLink, PartIcon, Stars, PhotoPipe, TPipe, LocPipe, KztPipe],
   template: `
     @let p = product();
     <article class="card pc">
       <a class="visual" [routerLink]="['/product', p.id]">
-        <span class="ic"><app-part-icon [name]="p.category.icon" [size]="40" /></span>
+        @if (p.image) {
+          <img [src]="p.image | photo" [alt]="p | loc: 'name'" loading="lazy" />
+        } @else {
+          <span class="ic"><app-part-icon [name]="p.category.icon" [size]="40" /></span>
+        }
         @if (garage.car()) {
           <span class="fit" [class.no]="!fits()">
             {{ fits() ? '✓ ' + ('product.fits_yours' | t) + ' ' + garage.car()!.model : ('product.not_fit' | t) + ' ' + garage.car()!.model }}
@@ -25,6 +31,9 @@ import { KztPipe, LocPipe, TPipe } from '../../shared/t.pipe';
       <div class="body">
         <div class="meta"><span>{{ p.brand.name }}</span><span class="mono">{{ p.sku }}</span></div>
         <a class="name" [routerLink]="['/product', p.id]">{{ p | loc: 'name' }}</a>
+        @if (p.rating_count) {
+          <div class="rating"><app-stars [value]="p.rating_avg ?? 0" [size]="13" /> <b>{{ p.rating_avg }}</b> <span>({{ p.rating_count }})</span></div>
+        }
         <div class="stock" [class.out]="!p.in_stock" [class.low]="p.in_stock && p.stock <= 5">
           @if (!p.in_stock) { {{ 'product.out_of_stock' | t }} }
           @else if (p.stock <= 5) { {{ p.stock }} {{ 'product.left' | t }} }
@@ -50,8 +59,10 @@ import { KztPipe, LocPipe, TPipe } from '../../shared/t.pipe';
       &:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(16,24,40,.12); } }
     .visual { position: relative; display: grid; place-items: center; aspect-ratio: 16 / 9;
       background: linear-gradient(180deg, var(--panel-2), var(--panel)); border-bottom: 1px solid var(--line); }
+    .visual img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    .rating { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); b { color: var(--text); } }
     .ic { display: grid; place-items: center; width: 76px; height: 76px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); }
-    .fit { position: absolute; left: 10px; top: 10px; right: 10px; width: fit-content; font-size: 12px; font-weight: 700;
+    .fit { z-index: 1; position: absolute; left: 10px; top: 10px; right: 10px; width: fit-content; font-size: 12px; font-weight: 700;
       padding: 4px 9px; border-radius: 999px; background: var(--ok-soft); color: var(--ok);
       &.no { background: var(--panel); color: var(--muted); border: 1px solid var(--line); } }
     .body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 6px; flex: 1; }

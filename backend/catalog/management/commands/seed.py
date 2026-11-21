@@ -6,61 +6,25 @@ Demo accounts are for LOCAL development only.
 Opening stock is not written to Product.stock: it is posted as a stock receipt
 (inventory.services.receive_stock), so every balance has a matching journal entry.
 """
+from pathlib import Path
+
 from django.contrib.auth import get_user_model
+from django.core.files import File
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
-from catalog.models import Brand, CarModel, Category, Product
+from catalog.models import Brand, CarModel, Category, Product, Review
 from inventory.constants import MAIN_WAREHOUSE_NAME
 from inventory.models import StockMovement, StockReceipt, StockReceiptItem, Warehouse, WarehouseStock
 from inventory.services import receive_stock
 from orders.models import CartItem, Order, OrderItem
 
-CATEGORIES = [
-    ("brakes", "Brakes", "Тормозная система", "disc"),
-    ("engine-oil", "Engine oil & fluids", "Масла и жидкости", "droplet"),
-    ("filters", "Filters", "Фильтры", "filter"),
-    ("lighting", "Lighting", "Освещение", "bulb"),
-    ("suspension", "Suspension", "Подвеска", "spring"),
-    ("accessories", "Accessories", "Аксессуары", "star"),
-    ("tires", "Tires & wheels", "Шины и диски", "wheel"),
-]
+from .seed_data import BRANDS, CARS, CATEGORIES, DEMO_REVIEWERS, DEMO_REVIEWS, DESCRIPTIONS, PRODUCTS
 
-BRANDS = [
-    ("Bosch", "Germany"), ("Brembo", "Italy"), ("Castrol", "United Kingdom"), ("Mann-Filter", "Germany"),
-    ("Philips", "Netherlands"), ("KYB", "Japan"), ("Michelin", "France"), ("Toyota Genuine", "Japan"),
-]
-
-CARS = [
-    ("Toyota", "Camry", 2018, 2024), ("Toyota", "Land Cruiser Prado", 2010, 2023), ("Hyundai", "Elantra", 2016, 2023),
-    ("Hyundai", "Tucson", 2015, 2024), ("Kia", "Rio", 2017, 2023), ("Chevrolet", "Cobalt", 2013, 2023),
-    ("Lada", "Granta", 2011, 2024), ("Volkswagen", "Polo", 2015, 2022),
-]
-
-# sku, name_en, name_ru, category, brand, price KZT, stock, compatible car indexes
-PRODUCTS = [
-    ("BR-001", "Front brake pads", "Передние тормозные колодки", "brakes", "Brembo", 24900, 15, [0, 2, 3]),
-    ("BR-002", "Ventilated brake disc", "Вентилируемый тормозной диск", "brakes", "Brembo", 38500, 8, [0, 1]),
-    ("BR-003", "Rear brake pads", "Задние тормозные колодки", "brakes", "Bosch", 17900, 20, [2, 4, 6]),
-    ("BR-004", "Brake fluid DOT4 1L", "Тормозная жидкость DOT4 1л", "brakes", "Bosch", 4900, 40, [0, 1, 2, 3, 4, 5, 6, 7]),
-    ("OIL-001", "Castrol EDGE 5W-30 4L", "Моторное масло Castrol EDGE 5W-30 4л", "engine-oil", "Castrol", 21500, 30, [0, 2, 3, 7]),
-    ("OIL-002", "Castrol Magnatec 10W-40 4L", "Моторное масло Castrol Magnatec 10W-40 4л", "engine-oil", "Castrol", 14900, 25, [4, 5, 6]),
-    ("OIL-003", "Antifreeze G12 5L", "Антифриз G12 5л", "engine-oil", "Castrol", 8900, 18, [0, 1, 2, 3, 4, 5, 6, 7]),
-    ("FL-001", "Oil filter W 712/95", "Масляный фильтр W 712/95", "filters", "Mann-Filter", 3900, 50, [2, 3, 4]),
-    ("FL-002", "Air filter C 26 017", "Воздушный фильтр C 26 017", "filters", "Mann-Filter", 6500, 35, [0, 1]),
-    ("FL-003", "Cabin filter with carbon", "Салонный фильтр угольный", "filters", "Bosch", 5900, 0, [0, 2, 3, 4]),
-    ("FL-004", "Toyota genuine oil filter", "Оригинальный масляный фильтр Toyota", "filters", "Toyota Genuine", 4500, 22, [0, 1]),
-    ("LT-001", "H7 X-tremeVision bulbs (2 pcs)", "Лампы H7 X-tremeVision (2 шт)", "lighting", "Philips", 11900, 28, [2, 4, 5, 7]),
-    ("LT-002", "LED H4 headlight kit", "Комплект LED ламп H4", "lighting", "Philips", 27900, 10, [5, 6]),
-    ("SU-001", "Front shock absorber Excel-G", "Передний амортизатор Excel-G", "suspension", "KYB", 32900, 12, [0, 2, 3]),
-    ("SU-002", "Rear shock absorber Excel-G", "Задний амортизатор Excel-G", "suspension", "KYB", 28900, 9, [4, 6, 7]),
-    ("SU-003", "Stabilizer link", "Стойка стабилизатора", "suspension", "Toyota Genuine", 9900, 16, [0, 1]),
-    ("AC-001", "Wiper blades Aerotwin 600/475", "Щётки стеклоочистителя Aerotwin 600/475", "accessories", "Bosch", 12900, 30, [0, 2, 3]),
-    ("AC-002", "Car battery S4 60Ah", "Аккумулятор S4 60Ач", "accessories", "Bosch", 54900, 7, [0, 2, 3, 4, 5, 6, 7]),
-    ("AC-003", "All-weather floor mats", "Всесезонные коврики", "accessories", "Toyota Genuine", 19900, 14, [0, 1]),
-    ("TR-001", "Michelin X-Ice North 4 205/55 R16", "Шина Michelin X-Ice North 4 205/55 R16", "tires", "Michelin", 62900, 24, [2, 7]),
-    ("TR-002", "Michelin Primacy 4 215/55 R17", "Шина Michelin Primacy 4 215/55 R17", "tires", "Michelin", 58900, 16, [0, 3]),
-]
+# Product photos: put files named by SKU into this folder (BR-001.jpg, OIL-001.png ...) and run `seed`.
+# They are copied into media/ once. Photos uploaded in the admin panel are never overwritten.
+SEED_IMAGES = Path(__file__).resolve().parents[2] / "seed_images"
+IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".webp")
 
 DEMO_USERS = [
     ("admin", "admin@autoshop.local", "admin", True),
@@ -98,22 +62,25 @@ class Command(BaseCommand):
         brands = {}
         for name, country in BRANDS:
             brands[name], _ = Brand.objects.update_or_create(name=name, defaults={"country": country})
-        cars = []
-        for make, model, y1, y2 in CARS:
-            car, _ = CarModel.objects.get_or_create(make=make, model=model, year_from=y1, year_to=y2)
-            cars.append(car)
+        cars = {}
+        for key, (make, model, y1, y2) in CARS.items():
+            cars[key], _ = CarModel.objects.get_or_create(make=make, model=model, year_from=y1, year_to=y2)
 
         warehouse, _ = Warehouse.objects.get_or_create(name=MAIN_WAREHOUSE_NAME)
         opening = []
-        for sku, en, ru, cat, brand, price, stock, fits in PRODUCTS:
+        images_added = 0
+        for sku, en, ru, cat, brand, price, stock, fits, oem, specs in PRODUCTS:
+            desc_en, desc_ru = DESCRIPTIONS[cat]
             # "stock" is NOT in defaults: re-running seed must not overwrite the cached total.
             p, _ = Product.objects.update_or_create(sku=sku, defaults={
                 "name_en": en, "name_ru": ru,
-                "description_en": f"{en} by {brand}. Quality part with manufacturer warranty.",
-                "description_ru": f"{ru} от {brand}. Качественная деталь с гарантией производителя.",
+                "description_en": desc_en.format(name=en, brand=brand),
+                "description_ru": desc_ru.format(name=ru, brand=brand),
                 "category": cats[cat], "brand": brands[brand], "price": price,
+                "oem_numbers": oem, "specs": specs,
             })
-            p.compatible_cars.set([cars[i] for i in fits])
+            p.compatible_cars.set([cars[key] for key in fits])
+            images_added += self.attach_image(p)
             # Opening stock only for products with no journal entries and no balance yet
             # (an old DB may already hold balances created before the journal existed).
             if (
@@ -138,9 +105,45 @@ class Command(BaseCommand):
             )
             receive_stock(receipt, User.objects.get(username="manager"))
 
+        reviews_added = self.seed_reviews(User)
+
         if opts.get("verbosity", 1) > 0:
             self.stdout.write(self.style.SUCCESS(
                 f"Seeded {Category.objects.count()} categories, {Brand.objects.count()} brands, "
-                f"{CarModel.objects.count()} car models, {Product.objects.count()} products, "
+                f"{CarModel.objects.count()} car models, {Product.objects.count()} products "
+                f"({images_added} new photos, {reviews_added} new reviews), "
                 f"demo users: admin / manager / customer (password: {DEMO_PASSWORD})"
             ))
+
+    def attach_image(self, product):
+        """Copy seed_images/<SKU>.<ext> to the product if it has no photo yet. Returns 1 if added."""
+        if product.image or not SEED_IMAGES.exists():
+            return 0
+        for ext in IMAGE_EXTS:
+            path = SEED_IMAGES / f"{product.sku}{ext}"
+            if path.exists():
+                with path.open("rb") as fh:
+                    product.image.save(path.name, File(fh), save=True)
+                return 1
+        return 0
+
+    def seed_reviews(self, User):
+        """Demo reviewers (customers) and a few reviews, so ratings show up on a fresh database."""
+        people = {}
+        for username, first, last in DEMO_REVIEWERS:
+            user, created = User.objects.get_or_create(
+                username=username, defaults={"email": f"{username}@autoshop.local", "first_name": first, "last_name": last}
+            )
+            if created:
+                user.set_password(DEMO_PASSWORD)
+                user.save()
+            people[username] = user
+        added = 0
+        for sku, username, stars, text in DEMO_REVIEWS:
+            product = Product.objects.filter(sku=sku).first()
+            if product:
+                _, created = Review.objects.get_or_create(
+                    product=product, user=people[username], defaults={"rating": stars, "text": text}
+                )
+                added += created
+        return added

@@ -32,6 +32,14 @@ class CartItem(models.Model):
 
 
 class Order(models.Model):
+    class Delivery(models.TextChoices):
+        COURIER = "courier", "Courier delivery"
+        PICKUP = "pickup", "Pickup from the shop"
+
+    class Payment(models.TextChoices):
+        CARD = "card", "Card online (demo)"
+        CASH = "cash", "Cash or card on delivery"
+
     class Status(models.TextChoices):
         NEW = "new", "New"
         PAID = "paid", "Paid"
@@ -43,7 +51,13 @@ class Order(models.Model):
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.NEW)
     shipping_address = models.CharField(max_length=255)
     phone = models.CharField(max_length=20)
-    total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    delivery_method = models.CharField(max_length=20, choices=Delivery.choices, default=Delivery.COURIER)
+    payment_method = models.CharField(max_length=20, choices=Payment.choices, default=Payment.CASH)
+    comment = models.CharField(max_length=500, blank=True, help_text="Customer's note for the courier / shop")
+    items_total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    delivery_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total = models.DecimalField(max_digits=12, decimal_places=2, default=0)  # items_total + delivery_cost
+    paid_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -71,3 +85,19 @@ class OrderItem(models.Model):
     @property
     def subtotal(self):
         return self.unit_price * self.quantity
+
+
+class OrderEvent(models.Model):
+    """Status history of an order (the timeline on the order page): who changed what and when."""
+
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="events")
+    status = models.CharField(max_length=20, choices=Order.Status.choices)
+    by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    note = models.CharField(max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at", "pk"]
+
+    def __str__(self):
+        return f"#{self.order_id} → {self.status}"

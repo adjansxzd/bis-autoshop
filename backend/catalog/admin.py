@@ -3,7 +3,7 @@ from django.contrib import admin
 from django.db.models import Count
 from django.utils.html import format_html
 
-from .models import Brand, CarModel, Category, Product
+from .models import Brand, CarModel, Category, Product, Review
 
 LOW_STOCK = 5  # products with this many or fewer are highlighted
 
@@ -34,13 +34,13 @@ class StockFilter(admin.SimpleListFilter):
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ("sku", "name_en", "brand", "category", "price", "stock", "stock_status", "is_active")
-    list_display_links = ("sku", "name_en")
+    list_display = ("thumb", "sku", "name_en", "brand", "category", "price", "stock", "stock_status", "rating", "is_active")
+    list_display_links = ("thumb", "sku", "name_en")
     list_editable = ("price", "is_active")  # quick edits straight from the list
     # stock is a cached warehouse total; change it with a stock receipt in the Inventory section.
-    readonly_fields = ("stock",)
+    readonly_fields = ("stock", "photo_preview")
     list_filter = (StockFilter, "category", "brand", "is_active")
-    search_fields = ("sku", "name_en", "name_ru", "brand__name")
+    search_fields = ("sku", "name_en", "name_ru", "oem_numbers", "brand__name")
     list_select_related = ("brand", "category")
     list_per_page = 25
     filter_horizontal = ("compatible_cars",)
@@ -51,8 +51,32 @@ class ProductAdmin(admin.ModelAdmin):
         ("English", {"fields": ("name_en", "description_en")}),
         ("Русский", {"fields": ("name_ru", "description_ru")}),
         ("Fitment", {"fields": ("compatible_cars",), "description": "Cars this part fits ('Fits my car' filter)."}),
-        ("Image", {"fields": ("image_url",), "classes": ("collapse",)}),
+        ("Photo", {"fields": ("image", "photo_preview")}),
+        ("Details", {"fields": ("oem_numbers", "specs"),
+                     "description": 'Specs: [{"en": "Diameter", "ru": "Диаметр", "value": "296 mm"}, ...]'}),
     )
+
+    def get_queryset(self, request):
+        from .reviews import with_ratings
+        return with_ratings(super().get_queryset(request))
+
+    @admin.display(description="")
+    def thumb(self, obj):
+        if obj.image:
+            return format_html('<img src="{}" style="width:40px;height:40px;object-fit:cover;border-radius:6px">', obj.image.url)
+        return format_html('<span style="display:inline-block;width:40px;height:40px;border-radius:6px;background:#f0f0ed"></span>')
+
+    @admin.display(description="Preview")
+    def photo_preview(self, obj):
+        if obj.image:
+            return format_html('<img src="{}" style="max-width:240px;border-radius:8px">', obj.image.url)
+        return "No photo yet — the shop shows the category icon."
+
+    @admin.display(description="Rating", ordering="rating_avg")
+    def rating(self, obj):
+        if not obj.rating_count:
+            return "—"
+        return f"{obj.rating_avg:.1f}★ ({obj.rating_count})"
 
     @admin.display(description="Stock status", ordering="stock")
     def stock_status(self, obj):
@@ -96,3 +120,25 @@ class CarModelAdmin(admin.ModelAdmin):
     list_display = ("make", "model", "year_from", "year_to")
     list_filter = ("make",)
     search_fields = ("make", "model")
+
+
+@admin.register(Review)
+class ReviewAdmin(admin.ModelAdmin):
+    """Moderation: managers can read and delete reviews (e.g. rude or spam), not write them."""
+
+    list_display = ("product", "user", "stars", "short_text", "created_at")
+    list_filter = ("rating", "created_at")
+    search_fields = ("product__sku", "product__name_en", "user__username", "text")
+    list_select_related = ("product", "user")
+    readonly_fields = ("product", "user", "rating", "text", "created_at", "updated_at")
+
+    def has_add_permission(self, request):
+        return False  # reviews are written by customers in the shop
+
+    @admin.display(description="Rating", ordering="rating")
+    def stars(self, obj):
+        return "★" * obj.rating + "☆" * (5 - obj.rating)
+
+    @admin.display(description="Text")
+    def short_text(self, obj):
+        return (obj.text[:70] + "…") if len(obj.text) > 70 else obj.text

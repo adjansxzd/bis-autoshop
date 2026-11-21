@@ -4,7 +4,7 @@ import { Observable, tap } from 'rxjs';
 
 import { environment } from '../../environments/environment';
 import { AuthService } from './auth.service';
-import { Cart, CartItem, Order, Page } from './models';
+import { Cart, CartItem, CheckoutData, DeliveryOptions, Order, Page } from './models';
 
 /**
  * Cart and orders (all checks are done again on the server):
@@ -51,14 +51,40 @@ export class CartService {
     return this.http.delete<void>(`${this.base}/cart/items/${itemId}/`).pipe(tap(() => this.load()));
   }
 
-  checkout(shipping_address: string, phone: string): Observable<Order> {
-    return this.http
-      .post<Order>(`${this.base}/orders/checkout/`, { shipping_address, phone })
-      .pipe(tap(() => this.load()));
+  /** POST /api/orders/checkout/ — delivery (courier/pickup) and payment (card online/cash on delivery) */
+  checkout(data: CheckoutData): Observable<Order> {
+    return this.http.post<Order>(`${this.base}/orders/checkout/`, data).pipe(tap(() => this.load()));
   }
 
-  orders(): Observable<Page<Order>> {
-    return this.http.get<Page<Order>>(`${this.base}/orders/`);
+  deliveryOptions(): Observable<DeliveryOptions> {
+    return this.http.get<DeliveryOptions>(`${this.base}/orders/delivery-options/`);
+  }
+
+  getOrder(id: number): Observable<Order> {
+    return this.http.get<Order>(`${this.base}/orders/${id}/`);
+  }
+
+  /** demo online payment: new → paid (no card data is sent) */
+  pay(id: number): Observable<Order> {
+    return this.http.post<Order>(`${this.base}/orders/${id}/pay/`, {});
+  }
+
+  cancelOrder(id: number, reason: string): Observable<Order> {
+    return this.http.post<Order>(`${this.base}/orders/${id}/cancel/`, { reason });
+  }
+
+  /** "Order again": puts the order's items back into the cart */
+  reorder(id: number): Observable<{ added: string[]; skipped: string[] }> {
+    return this.http.post<{ added: string[]; skipped: string[] }>(`${this.base}/orders/${id}/reorder/`, {}).pipe(tap(() => this.load()));
+  }
+
+  /** GET /api/orders/?q=&status=&page= — search by order number, product or SKU; filter by status */
+  orders(filters: { q?: string; status?: string; page?: number } = {}): Observable<Page<Order>> {
+    const params: Record<string, string> = {};
+    if (filters.q) params['q'] = filters.q;
+    if (filters.status) params['status'] = filters.status;
+    if (filters.page && filters.page > 1) params['page'] = String(filters.page);
+    return this.http.get<Page<Order>>(`${this.base}/orders/`, { params });
   }
 }
 

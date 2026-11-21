@@ -27,7 +27,7 @@ class ShopFlowTests(APITestCase):
     def test_catalog_is_public_and_paginated(self):
         res = self.client.get("/api/products/")
         self.assertEqual(res.status_code, 200)
-        self.assertEqual(res.data["count"], 21)
+        self.assertEqual(res.data["count"], Product.objects.filter(is_active=True).count())
         self.assertEqual(len(res.data["results"]), 12)
 
     def test_filter_by_category_and_car(self):
@@ -369,3 +369,93 @@ class ShopFlowTests(APITestCase):
         self.assertEqual(res.status_code, 200)  # form re-rendered with an error
         self.assertEqual(Order.objects.get(pk=order_id).status, Order.Status.SHIPPED)
         self.assertFalse(StockMovement.objects.filter(order_id=order_id, movement_type=StockMovement.Type.RETURN).exists())
+
+
+class OrderProcessTests(APITestCase):
+    """Checkout with delivery & payment, demo payment, cancellation by the customer, history, reorder."""
+
+    @classmethod
+    def setUpTestData(cls):
+        call_command("seed", verbosity=0)
+
+    def login(self, username="customer", password="demo12345"):
+        token = self.client.post("/api/auth/login/", {"username": username, "password": password}).data["access"]
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
+
+    def checkout(self, sku="BR-003", qty=1, **body):
+        product = Product.objects.get(sku=sku)
+        self.client.post("/api/cart/items/", {"product_id": product.id, "quantity": qty})
+        data = {"shipping_address": "Almaty, Tole bi 59", "phone": "+77001234567"}
+        data.update(body)
+        return self.client.post("/api/orders/checkout/", data, format="json")
+
+    def test_courier_fee_and_free_delivery(self):
+        self.login()
+        cheap = self.checkout("BR-003", 1, delivery_method="courier").data          # 17 900 ₸
+        self.assertEqual(float(cheap["delivery_cost"]), 1500)
+        self.assertEqual(float(cheap["total"]), 17900 + 1500)
+        big = self.checkout("TR-003", 1, delivery_method="courier").data            # 79 900 ₸ ≥ 50 000
+        self.assertEqual(float(big["delivery_cost"]), 0)
+
+    def test_pickup_needs_no_address_and_is_free(self):
+        self.login()
+        res = self.checkout("BR-003", 1, delivery_method="pickup", shipping_address="")
+        self.assertEqual(res.status_code, 201, res.data)
+        self.assertEqual(float(res.data["delivery_cost"]), 0)
+        self.assertIn("AutoShop", res.data["shipping_address"])
+
+    def test_courier_requires_address(self):
+        self.login()
+        self.assertEqual(self.checkout("BR-003", 1, delivery_method="courier", shipping_address="").status_code, 400)
+
+    def test_delivery_options_endpoint(self):
+        data = self.client.get("/api/orders/delivery-options/").data
+        self.assertEqual(float(data["courier_price"]), 1500)
+
+    def test_card_payment_flow_with_history(self):
+        self.login()
+        order = self.checkout(payment_method="card").data
+        self.assertTrue(order["can_pay"])
+        paid = self.client.post(f"/api/orders/{order['id']}/pay/").data
+        self.assertEqual(paid["status"], "paid")
+        self.assertIsNotNone(paid["paid_at"])
+        self.assertEqual([e["status"] for e in paid["events"]], ["new", "paid"])
+        self.assertEqual(self.client.post(f"/api/orders/{order['id']}/pay/").status_code, 400)  # no double payment
+
+    def test_cash_order_cannot_be_paid_online(self):
+        self.login()
+        order = self.checkout(payment_method="cash").data
+        self.assertFalse(order["can_pay"])
+        self.assertEqual(self.client.post(f"/api/orders/{order['id']}/pay/").status_code, 400)
+
+    def test_customer_cancels_and_stock_returns(self):
+        self.login()
+        product = Product.objects.get(sku="BR-003")
+        before = product.stock
+        order = self.checkout("BR-003", 2, payment_method="card").data
+        self.client.post(f"/api/orders/{order['id']}/pay/")
+        res = self.client.post(f"/api/orders/{order['id']}/cancel/", {"reason": "Ordered by mistake"}, format="json")
+        self.assertEqual(res.data["status"], "cancelled")
+        self.assertIn("refund", res.data["events"][-1]["note"])
+        self.assertEqual(Product.objects.get(pk=product.pk).stock, before)
+
+    def test_cannot_cancel_after_shipping_or_someone_elses_order(self):
+        self.login()
+        order = self.checkout().data
+        self.login("manager")
+        self.client.patch(f"/api/orders/{order['id']}/status/", {"status": "shipped"})
+        self.login()
+        self.assertEqual(self.client.post(f"/api/orders/{order['id']}/cancel/").status_code, 400)
+        detail = self.client.get(f"/api/orders/{order['id']}/").data
+        self.assertFalse(detail["can_cancel"])
+        self.assertEqual(detail["events"][-1]["by"], "shop")
+        User.objects.create_user("other", "o@test.kz", "Strong!pass77")
+        self.login("other", "Strong!pass77")
+        self.assertEqual(self.client.post(f"/api/orders/{order['id']}/cancel/").status_code, 404)
+
+    def test_reorder_puts_items_back_in_cart(self):
+        self.login()
+        order = self.checkout("BR-003", 2).data
+        res = self.client.post(f"/api/orders/{order['id']}/reorder/").data
+        self.assertEqual(len(res["added"]), 1)
+        self.assertEqual(self.client.get("/api/cart/").data["items"][0]["quantity"], 2)

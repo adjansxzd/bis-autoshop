@@ -15,3 +15,6 @@ Thumbs.db
 
 # screenshots the Claude desktop app saves into the project folder
 Claude outputs/
+
+# uploaded product photos (seed photos live in backend/catalog/seed_images/)
+backend/media/

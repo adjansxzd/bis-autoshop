@@ -1,17 +1,7 @@
 <div class="container wrap">
   <h1>{{ 'cart.title' | t }}</h1>
 
-  @if (placed(); as o) {
-    <div class="card done">
-      <div class="tick">✓</div>
-      <h2>{{ 'cart.placed' | t }} #{{ o.id }}</h2>
-      <p>{{ o.total | kzt }} · {{ 'cart.placed_sub' | t }}</p>
-      <div class="done-actions">
-        <a class="btn" routerLink="/orders">{{ 'nav.orders' | t }}</a>
-        <a class="btn ghost" routerLink="/">{{ 'cart.to_catalog' | t }}</a>
-      </div>
-    </div>
-  } @else if (!auth.isLoggedIn()) {
+  @if (!auth.isLoggedIn()) {
     <div class="card empty">
       <p>{{ 'cart.need_login' | t }}</p>
       <a class="btn" routerLink="/login" [queryParams]="{ next: '/cart' }">{{ 'nav.login' | t }}</a>
@@ -26,7 +16,10 @@
       <ul class="items">
         @for (item of cart.cart()!.items; track item.id) {
           <li class="card item">
-            <a class="thumb" [routerLink]="['/product', item.product.id]"><app-part-icon [name]="item.product.category.icon" [size]="34" /></a>
+            <a class="thumb" [routerLink]="['/product', item.product.id]">
+              @if (item.product.image) { <img [src]="item.product.image | photo" alt="" /> }
+              @else { <app-part-icon [name]="item.product.category.icon" [size]="34" /> }
+            </a>
             <div class="info">
               <a class="name" [routerLink]="['/product', item.product.id]">{{ item.product | loc: 'name' }}</a>
               <div class="meta">{{ item.product.brand.name }} · <span class="mono">{{ item.product.sku }}</span> · {{ item.product.price | kzt }}</div>
@@ -44,13 +37,56 @@
       </ul>
 
       <aside class="card summary">
-        <div class="total-row"><span>{{ 'cart.total' | t }} ({{ cart.count() }} {{ 'cart.items' | t }})</span><strong>{{ cart.cart()!.total | kzt }}</strong></div>
         <h3>{{ 'cart.checkout' | t }}</h3>
-        <form (ngSubmit)="checkout()" #f="ngForm">
-          <label>{{ 'cart.address' | t }}<input type="text" name="address" [(ngModel)]="address" required placeholder="Almaty, Tole bi 59" /></label>
-          <label>{{ 'cart.phone' | t }}<input type="tel" name="phone" [(ngModel)]="phone" required placeholder="+7 700 123 45 67" /></label>
+        <form (ngSubmit)="checkout()">
+          <!-- 1. delivery -->
+          <div class="group">
+            <span class="glabel">{{ 'co.delivery' | t }}</span>
+            <label class="opt" [class.on]="delivery() === 'courier'">
+              <input type="radio" name="delivery" value="courier" [checked]="delivery() === 'courier'" (change)="delivery.set('courier')" />
+              <span><b>{{ 'co.courier' | t }}</b>
+                <small>{{ options() ? ('co.courier_hint' | t) + ' ' + (options()!.free_from | kzt) : '' }}</small></span>
+              <em>{{ deliveryCostFor('courier') }}</em>
+            </label>
+            <label class="opt" [class.on]="delivery() === 'pickup'">
+              <input type="radio" name="delivery" value="pickup" [checked]="delivery() === 'pickup'" (change)="delivery.set('pickup')" />
+              <span><b>{{ 'co.pickup' | t }}</b><small>{{ options()?.pickup_address }}</small></span>
+              <em>{{ 'co.free' | t }}</em>
+            </label>
+          </div>
+
+          @if (delivery() === 'courier') {
+            <label>{{ 'cart.address' | t }}<input type="text" name="address" [(ngModel)]="address" placeholder="Almaty, Tole bi 59, apt 12" /></label>
+          }
+          <label>{{ 'cart.phone' | t }}<input type="tel" name="phone" [(ngModel)]="phone" placeholder="+7 700 123 45 67" /></label>
+
+          <!-- 2. payment -->
+          <div class="group">
+            <span class="glabel">{{ 'co.payment' | t }}</span>
+            <label class="opt" [class.on]="payment === 'card'">
+              <input type="radio" name="payment" value="card" [(ngModel)]="payment" />
+              <span><b>{{ 'co.card' | t }}</b><small>{{ 'co.card_hint' | t }}</small></span>
+            </label>
+            <label class="opt" [class.on]="payment === 'cash'">
+              <input type="radio" name="payment" value="cash" [(ngModel)]="payment" />
+              <span><b>{{ 'co.cash' | t }}</b><small>{{ 'co.cash_hint' | t }}</small></span>
+            </label>
+          </div>
+
+          <label>{{ 'co.comment' | t }}<input type="text" name="comment" [(ngModel)]="comment" maxlength="500" [placeholder]="'co.comment_ph' | t" /></label>
+
+          <!-- 3. totals -->
+          <dl class="totals">
+            <div><dt>{{ 'co.items' | t }} ({{ cart.count() }})</dt><dd>{{ itemsTotal() | kzt }}</dd></div>
+            <div><dt>{{ 'co.delivery' | t }}</dt><dd>{{ deliveryCost() ? (deliveryCost() | kzt) : ('co.free' | t) }}</dd></div>
+            @if (toFree() > 0) { <p class="hint">{{ 'co.add_for_free' | t }} {{ toFree() | kzt }}</p> }
+            <div class="grand"><dt>{{ 'cart.total' | t }}</dt><dd>{{ itemsTotal() + deliveryCost() | kzt }}</dd></div>
+          </dl>
+
           @if (error()) { <div class="error-text">{{ error() }}</div> }
-          <button class="btn block" type="submit" [disabled]="!f.valid || placing()">{{ 'cart.place_order' | t }}</button>
+          <button class="btn block" type="submit" [disabled]="!canPlace() || placing()">
+            {{ payment === 'card' ? ('co.place_and_pay' | t) : ('cart.place_order' | t) }}
+          </button>
         </form>
       </aside>
     </div>
