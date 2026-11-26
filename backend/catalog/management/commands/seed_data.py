@@ -26,6 +26,7 @@ BRANDS = [
     ("NGK", "Japan"), ("Denso", "Japan"), ("Varta", "Germany"), ("Liqui Moly", "Germany"), ("Motul", "France"),
     ("Valeo", "France"), ("Sachs", "Germany"), ("Gates", "USA"), ("Osram", "Germany"), ("Hella", "Germany"),
     ("Continental", "Germany"), ("Nokian", "Finland"), ("Hyundai/Kia Genuine", "South Korea"), ("TRW", "Germany"),
+    ("AIRLINE", "Russia"), ("Baseus", "China"),
 ]
 
 # key: make, model, year from, year to   (the first 8 keep their order from earlier versions)
@@ -177,7 +178,7 @@ PRODUCTS = [
      "27301-2B010", [spec("Type", "Тип", "Pencil coil / Индивидуальная")]),
     ("IG-004", "Spark plug wire set", "Высоковольтные провода (комплект)", "ignition", "Bosch", 8900, 14, ["granta", "niva", "nexia"],
      "", [spec("Quantity", "Количество", "4 pcs / шт")]),
-    # --- electrics ---
+    # --- electrics ---  (AC-002 keeps its old SKU: seed finds products by SKU, a new SKU would create a duplicate)
     ("AC-002", "Car battery S4 60Ah", "Аккумулятор S4 60Ач", "electrics", "Bosch", 54900, 7, ["camry", "elantra", "tucson", "rio", "cobalt", "granta", "polo"],
      "", [spec("Capacity", "Ёмкость", "60 Ah"), spec("Cold cranking", "Пусковой ток", "540 A"), spec("Polarity", "Полярность", "R+")]),
     ("EL-001", "Varta Blue Dynamic 74Ah", "Аккумулятор Varta Blue Dynamic 74Ач", "electrics", "Varta", 69900, 6, ["prado", "rav4", "sportage", "octavia"],
@@ -188,6 +189,8 @@ PRODUCTS = [
      "27060-0V010", [spec("Output", "Мощность", "130 A")]),
     ("EL-004", "Starter motor", "Стартер", "electrics", "Denso", 89900, 2, ["camry", "rav4"],
      "28100-0V030", [spec("Power", "Мощность", "1.4 kW")]),
+    ("EL-005", "Battery charger Bosch C3 6/12V", "Зарядное устройство Bosch C3 6/12В", "electrics", "Bosch", 29900, 8, ALL,
+     "", [spec("Voltage", "Напряжение", "6 / 12 V"), spec("Charging current", "Ток заряда", "3.8 A")]),
     # --- cooling ---
     ("CO-001", "Radiator", "Радиатор охлаждения", "cooling", "Valeo", 64900, 4, ["elantra", "creta", "rio"],
      "25310-H8000", [spec("Material", "Материал", "Aluminium / Алюминий")]),
@@ -195,8 +198,8 @@ PRODUCTS = [
      "90916-03129", [spec("Opening temperature", "Т открытия", "82 °C")]),
     ("CO-003", "Water pump", "Помпа (водяной насос)", "cooling", "Gates", 34900, 6, KOREAN,
      "25100-2B000", [spec("Drive", "Привод", "Belt / Ремень")]),
-    ("CO-004", "Timing belt kit", "Комплект ремня ГРМ", "cooling", "Gates", 39900, 5, ["granta", "vesta", "nexia", "polo"],
-     "", [spec("Includes", "Состав", "Belt + idler / Ремень + ролик")]),
+    ("CO-004", "Timing belt kit with water pump", "Комплект ремня ГРМ с помпой", "cooling", "Gates", 39900, 5, ["granta", "vesta", "nexia", "polo"],
+     "", [spec("Includes", "Состав", "Belt + idler + water pump / Ремень + ролик + помпа")]),
     # --- tires ---
     ("TR-001", "Michelin X-Ice North 4 205/55 R16", "Шина Michelin X-Ice North 4 205/55 R16", "tires", "Michelin", 62900, 24, ["elantra", "polo", "cerato"],
      "", [spec("Season", "Сезон", "Winter, studded / Зима, шипы"), spec("Size", "Размер", "205/55 R16")]),
@@ -225,17 +228,43 @@ PRODUCTS = [
     ("CA-003", "Motul car wax", "Автомобильный воск Motul", "care", "Motul", 7900, 20, ALL,
      "", [spec("Volume", "Объём", "500 ml")]),
     # --- accessories ---
-    ("AC-001", "Wiper blades Aerotwin 650/400", "Щётки стеклоочистителя Aerotwin 650/400", "accessories", "Bosch", 12900, 30, ["camry", "elantra", "tucson"],
+    ("AC-001", "Wiper blades Aerotwin 650/400", "Щётки стеклоочистителя Aerotwin 650/400", "body", "Bosch", 12900, 30, ["camry", "elantra", "tucson"],
      "", [spec("Length", "Длина", "650 + 400 mm")]),
     ("AC-003", "All-weather floor mats", "Всесезонные коврики", "accessories", "Toyota Genuine", 19900, 14, ["camry", "prado"],
      "", [spec("Material", "Материал", "Rubber / Резина"), spec("Quantity", "Количество", "4 pcs / шт")]),
-    ("AC-004", "Phone holder for air vent", "Держатель телефона на дефлектор", "accessories", "Hella", 5900, 40, ALL,
+    ("AC-004", "Phone holder for air vent", "Держатель телефона на дефлектор", "accessories", "Baseus", 5900, 40, ALL,
      "", [spec("Mount", "Крепление", "Air vent / Дефлектор")]),
-    ("AC-005", "Emergency kit (triangle, first aid, extinguisher)", "Аварийный набор (знак, аптечка, огнетушитель)", "accessories", "Bosch", 14900, 18, ALL,
+    ("AC-005", "Emergency kit (triangle, first aid, extinguisher)", "Аварийный набор (знак, аптечка, огнетушитель)", "accessories", "AIRLINE", 14900, 18, ALL,
      "", [spec("Includes", "Состав", "3 items / 3 предмета")]),
-    ("AC-006", "Trunk organizer", "Органайзер в багажник", "accessories", "Hella", 9900, 15, ALL,
+    ("AC-006", "Trunk organizer", "Органайзер в багажник", "accessories", "AIRLINE", 9900, 15, ALL,
      "", [spec("Size", "Размер", "60 × 30 × 25 cm")]),
+    ("AC-007", "Portable air compressor 35 L/min", "Автомобильный компрессор 35 л/мин", "accessories", "AIRLINE", 16900, 12, ALL,
+     "", [spec("Flow", "Производительность", "35 L/min / л/мин"), spec("Power", "Питание", "12 V")]),
+    ("AC-008", "Jumper cables 400 A, 3 m", "Провода прикуривания 400А, 3 м", "accessories", "AIRLINE", 7900, 20, ALL,
+     "", [spec("Current", "Ток", "400 A"), spec("Length", "Длина", "3 m")]),
+    ("AC-009", "Telescopic snow brush with ice scraper", "Щётка-скребок для снега телескопическая", "accessories", "AIRLINE", 4500, 35, ALL,
+     "", [spec("Length", "Длина", "68–98 cm")]),
+    ("AC-010", "Car charger USB-C + USB-A 30 W", "Автомобильное зарядное USB-C/USB-A 30 Вт", "accessories", "Baseus", 6900, 25, ALL,
+     "", [spec("Ports", "Разъёмы", "USB-C + USB-A"), spec("Power", "Мощность", "30 W")]),
 ]
+
+# Permanent suppliers. Names, people and e-mails are FICTIONAL (course project); no phone numbers on purpose.
+# key, name, contact person, e-mail, prefix of opening receipt numbers
+SUPPLIERS = [
+    ("dala", "ТОО «Дала Авто Трейд»", "Ерлан Сапаров", "sales@dala-autotrade.kz", "DAT"),
+    ("volt", "ТОО «ВольтЛайн Казахстан»", "Айгерим Нурланова", "orders@voltline.kz", "VL"),
+    ("style", "ТОО «АвтоСтиль Центр»", "Дмитрий Ким", "info@autostyle-center.kz", "ASC"),
+]
+
+# Which supplier brings the opening stock of each category (every slug of CATEGORIES must be here)
+CATEGORY_SUPPLIER = {
+    # consumables and brakes
+    "brakes": "dala", "engine-oil": "dala", "filters": "dala", "cooling": "dala", "suspension": "dala",
+    # electrics and lighting
+    "electrics": "volt", "lighting": "volt", "ignition": "volt",
+    # accessories (body parts, car care and tyres are placed here too)
+    "accessories": "style", "care": "style", "body": "style", "tires": "style",
+}
 
 # Demo reviewers and reviews (sku, reviewer, stars, text)
 DEMO_REVIEWERS = [("aliya", "Aliya", "N."), ("timur", "Timur", "S."), ("dana", "Dana", "K.")]

@@ -32,8 +32,28 @@ class WarehouseStock(models.Model):
         return f"{self.product} at {self.warehouse}: {self.quantity}"
 
 
+class Supplier(models.Model):
+    """A permanent supplier that stock receipts come from."""
+
+    name = models.CharField(max_length=150, unique=True)
+    contact_person = models.CharField(max_length=150, blank=True)
+    phone = models.CharField(max_length=30, blank=True)
+    email = models.EmailField(blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+
 class StockReceipt(models.Model):
     warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT, related_name="receipts")
+    supplier = models.ForeignKey(
+        Supplier, null=True, blank=True, on_delete=models.PROTECT, related_name="receipts"
+    )
     number = models.CharField(max_length=40, blank=True, help_text="Supplier invoice / document number")
     created_at = models.DateTimeField(auto_now_add=True)
     posted_at = models.DateTimeField(null=True, blank=True)

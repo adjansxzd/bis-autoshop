@@ -1,7 +1,7 @@
 from django.contrib import admin, messages
 from django.core.exceptions import ValidationError
 
-from .models import StockMovement, StockReceipt, StockReceiptItem, Warehouse, WarehouseStock
+from .models import StockMovement, StockReceipt, StockReceiptItem, Supplier, Warehouse, WarehouseStock
 from .services import receive_stock
 
 
@@ -10,6 +10,13 @@ class WarehouseAdmin(admin.ModelAdmin):
     list_display = ("name", "address", "is_active", "created_at")
     list_filter = ("is_active",)
     search_fields = ("name", "address")
+
+
+@admin.register(Supplier)
+class SupplierAdmin(admin.ModelAdmin):
+    list_display = ("name", "contact_person", "phone", "email", "is_active", "created_at")
+    list_filter = ("is_active",)
+    search_fields = ("name",)
 
 
 @admin.register(WarehouseStock)
@@ -70,9 +77,9 @@ def post_stock_receipts(modeladmin, request, queryset):
 
 @admin.register(StockReceipt)
 class StockReceiptAdmin(admin.ModelAdmin):
-    list_display = ("id", "number", "warehouse", "created_at", "posted_at")
-    list_filter = ("warehouse",)
-    search_fields = ("number",)
+    list_display = ("id", "number", "supplier", "warehouse", "created_at", "posted_at")
+    list_filter = ("warehouse", "supplier")
+    search_fields = ("number", "supplier__name")
     readonly_fields = ("posted_at",)
     inlines = [StockReceiptItemInline]
     actions = [post_stock_receipts]
@@ -80,8 +87,14 @@ class StockReceiptAdmin(admin.ModelAdmin):
     def get_readonly_fields(self, request, obj=None):
         fields = list(super().get_readonly_fields(request, obj))
         if obj and obj.posted_at:
-            fields += ["warehouse", "number"]
+            fields += ["warehouse", "supplier", "number"]
         return fields
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        # A new receipt can only come from an active supplier.
+        if db_field.name == "supplier":
+            kwargs["queryset"] = Supplier.objects.filter(is_active=True)
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
     def has_delete_permission(self, request, obj=None):
         if obj and obj.posted_at:
