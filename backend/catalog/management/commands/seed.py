@@ -3,8 +3,10 @@ python manage.py seed           -> fills the DB with demo data (safe to run agai
 python manage.py seed --reset   -> deletes catalog, orders, carts and stock data first
 Demo accounts are for LOCAL development only.
 
-Opening stock is not written to Product.stock: it is posted as a stock receipt
-(inventory.services.receive_stock), so every balance has a matching journal entry.
+Opening stock is not written to Product.stock: it is posted as stock receipts
+(inventory.services.receive_stock), one receipt per supplier (see CATEGORY_SUPPLIER
+in seed_data.py), so every balance has a matching journal entry.
+Suppliers are permanent reference data: --reset keeps them.
 """
 from pathlib import Path
 
@@ -15,11 +17,13 @@ from django.db import transaction
 
 from catalog.models import Brand, CarModel, Category, Product, Review
 from inventory.constants import MAIN_WAREHOUSE_NAME
-from inventory.models import StockMovement, StockReceipt, StockReceiptItem, Warehouse, WarehouseStock
+from inventory.models import StockMovement, StockReceipt, StockReceiptItem, Supplier, Warehouse, WarehouseStock
 from inventory.services import receive_stock
 from orders.models import CartItem, Order, OrderItem
 
-from .seed_data import BRANDS, CARS, CATEGORIES, DEMO_REVIEWERS, DEMO_REVIEWS, DESCRIPTIONS, PRODUCTS
+from .seed_data import (
+    BRANDS, CARS, CATEGORIES, CATEGORY_SUPPLIER, DEMO_REVIEWERS, DEMO_REVIEWS, DESCRIPTIONS, PRODUCTS, SUPPLIERS,
+)
 
 # Product photos: put files named by SKU into this folder (BR-001.jpg, OIL-001.png ...) and run `seed`.
 # They are copied into media/ once. Photos uploaded in the admin panel are never overwritten.
@@ -44,6 +48,7 @@ class Command(BaseCommand):
     def handle(self, *args, **opts):
         if opts["reset"]:
             # Children first: stock rows, journal, receipts and order lines PROTECT products.
+            # Suppliers are kept: their receipts are deleted here, so PROTECT does not block anything.
             StockMovement.objects.all().delete()
             StockReceiptItem.objects.all().delete()
             StockReceipt.objects.all().delete()
@@ -66,8 +71,14 @@ class Command(BaseCommand):
         for key, (make, model, y1, y2) in CARS.items():
             cars[key], _ = CarModel.objects.get_or_create(make=make, model=model, year_from=y1, year_to=y2)
 
+        suppliers = {}
+        for key, name, contact, email, _prefix in SUPPLIERS:
+            suppliers[key], _ = Supplier.objects.get_or_create(
+                name=name, defaults={"contact_person": contact, "email": email}
+            )
+
         warehouse, _ = Warehouse.objects.get_or_create(name=MAIN_WAREHOUSE_NAME)
-        opening = []
+        opening = {key: [] for key in suppliers}  # supplier key -> [(product, qty)]
         images_added = 0
         for sku, en, ru, cat, brand, price, stock, fits, oem, specs in PRODUCTS:
             desc_en, desc_ru = DESCRIPTIONS[cat]
@@ -88,7 +99,7 @@ class Command(BaseCommand):
                 and not StockMovement.objects.filter(product=p).exists()
                 and not WarehouseStock.objects.filter(product=p, quantity__gt=0).exists()
             ):
-                opening.append((p, stock))
+                opening[CATEGORY_SUPPLIER[cat]].append((p, stock))
 
         User = get_user_model()
         for username, email, role, _superuser in DEMO_USERS:
@@ -98,12 +109,20 @@ class Command(BaseCommand):
             user.role = role
             user.save()  # User.save() syncs staff/superuser flags and the Managers group from the role
 
-        if opening:
-            receipt = StockReceipt.objects.create(warehouse=warehouse)
-            StockReceiptItem.objects.bulk_create(
-                [StockReceiptItem(receipt=receipt, product=p, quantity=qty) for p, qty in opening]
+        manager = User.objects.get(username="manager")
+        prefixes = {key: prefix for key, *_rest, prefix in SUPPLIERS}
+        receipts_added = 0
+        for key, lines in opening.items():
+            if not lines:
+                continue
+            receipt = StockReceipt.objects.create(
+                warehouse=warehouse, supplier=suppliers[key], number=self.next_receipt_number(prefixes[key])
             )
-            receive_stock(receipt, User.objects.get(username="manager"))
+            StockReceiptItem.objects.bulk_create(
+                [StockReceiptItem(receipt=receipt, product=p, quantity=qty) for p, qty in lines]
+            )
+            receive_stock(receipt, manager)
+            receipts_added += 1
 
         reviews_added = self.seed_reviews(User)
 
@@ -112,8 +131,17 @@ class Command(BaseCommand):
                 f"Seeded {Category.objects.count()} categories, {Brand.objects.count()} brands, "
                 f"{CarModel.objects.count()} car models, {Product.objects.count()} products "
                 f"({images_added} new photos, {reviews_added} new reviews), "
+                f"{Supplier.objects.count()} suppliers ({receipts_added} new opening receipts), "
                 f"demo users: admin / manager / customer (password: {DEMO_PASSWORD})"
             ))
+
+    @staticmethod
+    def next_receipt_number(prefix):
+        """DAT-0001, DAT-0002 ...: first number not used yet (receipt numbers are unique)."""
+        n = 1
+        while StockReceipt.objects.filter(number=f"{prefix}-{n:04d}").exists():
+            n += 1
+        return f"{prefix}-{n:04d}"
 
     def attach_image(self, product):
         """Copy seed_images/<SKU>.<ext> to the product if it has no photo yet. Returns 1 if added."""

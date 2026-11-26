@@ -4,16 +4,17 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.core.management import call_command
 from django.db import IntegrityError, transaction
-from django.db.models import Sum
+from django.db.models import ProtectedError, Sum
 from django.test import TestCase
 
+from catalog.management.commands.seed_data import CATEGORIES, CATEGORY_SUPPLIER, PRODUCTS, SUPPLIERS
 from catalog.models import Product
 from orders.models import Order
-from orders.services import place_order
+from orders.services import change_order_status, place_order
 
 from .constants import MAIN_WAREHOUSE_NAME
-from .models import StockMovement, StockReceipt, StockReceiptItem, Warehouse, WarehouseStock
-from .services import InsufficientStockError, receive_stock
+from .models import StockMovement, StockReceipt, StockReceiptItem, Supplier, Warehouse, WarehouseStock
+from .services import receive_stock
 
 
 User = get_user_model()
@@ -159,61 +160,127 @@ class SeedTests(JournalAssertions, TestCase):
 
         product.refresh_from_db()
         self.assertEqual(product.stock, 13)  # not reset to 15
-        self.assertEqual(StockReceipt.objects.count(), 1)
+        self.assertEqual(StockReceipt.objects.count(), len(SUPPLIERS))  # one opening receipt per supplier
         self.assert_balances_match_journal()
 
     def test_seed_reset_works_with_orders_and_stock(self):
-        call_command("seed_warehouse", stdout=StringIO())
+        call_command("seed", stdout=StringIO())
+        manager = User.objects.get(username="manager")
+        product = Product.objects.get(sku="BR-001")
+        order = place_order(User.objects.get(username="customer"), [(product, 1)], "Almaty", "+77001234567")
+        change_order_status(order, Order.Status.CANCELLED, manager)
+        receipt = StockReceipt.objects.create(
+            warehouse=Warehouse.objects.get(name=MAIN_WAREHOUSE_NAME), supplier=Supplier.objects.first()
+        )
+        StockReceiptItem.objects.create(receipt=receipt, product=product, quantity=4)
+        receive_stock(receipt, manager)
 
         call_command("seed", "--reset", stdout=StringIO())
 
-        from catalog.management.commands.seed_data import PRODUCTS
         self.assertEqual(Product.objects.count(), len(PRODUCTS))
         self.assertEqual(Order.objects.count(), 0)
+        self.assertEqual(Supplier.objects.count(), len(SUPPLIERS))  # suppliers survive --reset
+        self.assertEqual(StockReceipt.objects.count(), len(SUPPLIERS))
+        self.assertEqual(Product.objects.get(sku="BR-001").stock, 15)
         self.assert_balances_match_journal()
 
 
-class SeedWarehouseTests(JournalAssertions, TestCase):
+class SupplierTests(JournalAssertions, TestCase):
     @classmethod
     def setUpTestData(cls):
-        call_command("seed_warehouse", stdout=StringIO())
+        call_command("seed", verbosity=0)
 
-    def stock(self, sku):
-        return WarehouseStock.objects.get(warehouse__name=MAIN_WAREHOUSE_NAME, product__sku=sku).quantity
+    def setUp(self):
+        self.manager = User.objects.get(username="manager")
+        self.warehouse = Warehouse.objects.get(name=MAIN_WAREHOUSE_NAME)
+        self.product = Product.objects.get(sku="BR-001")
+        self.supplier = Supplier.objects.get(name=SUPPLIERS[0][1])
 
-    def test_balances_match_journal(self):
+    def post_receipt(self, supplier, quantity=5):
+        receipt = StockReceipt.objects.create(warehouse=self.warehouse, supplier=supplier)
+        StockReceiptItem.objects.create(receipt=receipt, product=self.product, quantity=quantity)
+        self.assertTrue(receive_stock(receipt, self.manager))
+        receipt.refresh_from_db()
+        return receipt
+
+    def test_seed_creates_suppliers_with_contacts(self):
+        self.assertEqual(Supplier.objects.count(), 3)
+        for _key, name, contact, email, _prefix in SUPPLIERS:
+            supplier = Supplier.objects.get(name=name)
+            self.assertEqual((supplier.contact_person, supplier.email), (contact, email))
+            self.assertEqual(supplier.phone, "")  # seed stores no phone numbers
+            self.assertTrue(supplier.is_active)
+
+    def test_every_category_has_a_supplier(self):
+        keys = {key for key, *_ in SUPPLIERS}
+        self.assertEqual(set(CATEGORY_SUPPLIER), {slug for slug, *_ in CATEGORIES})
+        self.assertTrue(set(CATEGORY_SUPPLIER.values()) <= keys)
+
+    def test_opening_stock_comes_in_one_posted_receipt_per_supplier(self):
+        receipts = StockReceipt.objects.all()
+        self.assertEqual(receipts.count(), 3)
+        self.assertFalse(receipts.filter(supplier__isnull=True).exists())
+        self.assertFalse(receipts.filter(posted_at__isnull=True).exists())
+        self.assertEqual(sorted(receipts.values_list("number", flat=True)), ["ASC-0001", "DAT-0001", "VL-0001"])
+        key_by_name = {name: key for key, name, *_ in SUPPLIERS}
+        for item in StockReceiptItem.objects.select_related("receipt__supplier", "product__category"):
+            self.assertEqual(
+                key_by_name[item.receipt.supplier.name], CATEGORY_SUPPLIER[item.product.category.slug], item.product.sku
+            )
+
+    def test_receipt_with_supplier_is_posted(self):
+        before = self.product.stock
+        receipt = self.post_receipt(self.supplier)
+
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.stock, before + 5)
+        self.assertEqual(receipt.supplier, self.supplier)
+        self.assertIn(receipt, self.supplier.receipts.all())
+        movement = StockMovement.objects.get(receipt=receipt)
+        self.assertEqual((movement.movement_type, movement.quantity), (StockMovement.Type.RECEIPT, 5))
         self.assert_balances_match_journal()
 
-    def test_journal_has_receipt_sale_and_return(self):
-        types = set(StockMovement.objects.values_list("movement_type", flat=True))
-        self.assertTrue({"receipt", "sale", "return"} <= types, types)
+    def test_receipt_without_supplier_is_posted(self):
+        before = self.product.stock
+        receipt = self.post_receipt(None, quantity=2)
 
-    def test_expected_balances(self):
-        self.assertEqual(self.stock("WH-001"), 37)  # 40 received - 3 sold - 2 sold + 2 returned
-        self.assertEqual(self.stock("WH-002"), 2)   # low stock
-        self.assertEqual(self.stock("WH-003"), 0)   # zero stock
-        self.assertEqual(self.stock("BR-001"), 24)  # 15 opening + 10 received - 1 sold
-        self.assertEqual(self.stock("OIL-001"), 34)  # 30 opening + 6 received - 2 sold
-        self.assertEqual(
-            sorted(Order.objects.values_list("status", flat=True)),
-            ["cancelled", "delivered", "paid"],
-        )
-        self.assertEqual(StockReceipt.objects.filter(posted_at__isnull=False).count(), 3)
+        self.product.refresh_from_db()
+        self.assertIsNone(receipt.supplier)
+        self.assertEqual(self.product.stock, before + 2)
+        self.assertTrue(StockMovement.objects.filter(receipt=receipt).exists())
+        self.assert_balances_match_journal()
 
-    def test_rerun_creates_no_duplicates(self):
-        before = self.snapshot()
-        call_command("seed_warehouse", stdout=StringIO())
-        self.assertEqual(self.snapshot(), before)
+    def test_supplier_with_receipts_cannot_be_deleted(self):
+        with self.assertRaises(ProtectedError):
+            self.supplier.delete()
 
-    def test_low_stock_product_cannot_be_oversold(self):
-        customer = User.objects.get(username="customer")
-        with self.assertRaises(InsufficientStockError):
-            with transaction.atomic():
-                place_order(customer, [(Product.objects.get(sku="WH-002"), 3)], "Almaty", "+77001234567")
-        self.assertEqual(self.stock("WH-002"), 2)
+    def test_seed_rerun_creates_no_duplicates(self):
+        before = self.snapshot() + (Supplier.objects.count(),)
+        call_command("seed", verbosity=0)
+        self.assertEqual(self.snapshot() + (Supplier.objects.count(),), before)
 
-    def test_zero_stock_product_cannot_be_sold(self):
-        customer = User.objects.get(username="customer")
-        with self.assertRaises(InsufficientStockError):
-            with transaction.atomic():
-                place_order(customer, [(Product.objects.get(sku="WH-003"), 1)], "Almaty", "+77001234567")
+    def test_seed_balances_match_journal(self):
+        self.assert_balances_match_journal()
+        for row in WarehouseStock.objects.select_related("product"):
+            received = StockMovement.objects.filter(
+                product=row.product, movement_type=StockMovement.Type.RECEIPT
+            ).aggregate(s=Sum("quantity"))["s"] or 0
+            self.assertEqual(row.quantity, received, row.product.sku)  # fresh seed: receipts only
+
+    def test_inactive_supplier_is_not_offered_in_receipt_form(self):
+        inactive = Supplier.objects.create(name="ТОО «Закрытый поставщик»", is_active=False)
+        self.client.force_login(User.objects.get(username="admin"))
+
+        page = self.client.get("/admin/inventory/stockreceipt/add/")
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, self.supplier.name)
+        self.assertNotContains(page, inactive.name)
+
+        res = self.client.post("/admin/inventory/stockreceipt/add/", {
+            "warehouse": self.warehouse.pk, "supplier": inactive.pk, "number": "X-1",
+            "items-TOTAL_FORMS": "0", "items-INITIAL_FORMS": "0",
+            "items-MIN_NUM_FORMS": "0", "items-MAX_NUM_FORMS": "1000",
+        })
+        self.assertEqual(res.status_code, 200)  # form shown again with an error, nothing saved
+        self.assertIn("supplier", res.context["adminform"].form.errors)
+        self.assertFalse(StockReceipt.objects.filter(number="X-1").exists())
