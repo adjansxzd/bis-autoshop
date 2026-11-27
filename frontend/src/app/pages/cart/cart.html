@@ -83,6 +83,17 @@
             <div class="grand"><dt>{{ 'cart.total' | t }}</dt><dd>{{ itemsTotal() + deliveryCost() | kzt }}</dd></div>
           </dl>
 
+          @if (phone.trim() && !isPhoneValid()) {
+  <div class="error-text">
+    Enter a valid Kazakhstan phone number.
+  </div>
+}
+
+@if (delivery() === 'courier' && address.trim() && !isAddressValid()) {
+  <div class="error-text">
+    Enter a complete delivery address.
+  </div>
+}
           @if (error()) { <div class="error-text">{{ error() }}</div> }
           <button class="btn block" type="submit" [disabled]="!canPlace() || placing()">
             {{ payment === 'card' ? ('co.place_and_pay' | t) : ('cart.place_order' | t) }}

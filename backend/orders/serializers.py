@@ -1,6 +1,6 @@
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
-
+import re
 from catalog.models import Product
 from catalog.serializers import ProductSerializer
 from inventory.services import get_available_stock
@@ -95,17 +95,46 @@ class OrderSerializer(serializers.ModelSerializer):
 
 
 class CheckoutSerializer(serializers.Serializer):
-    """POST /api/orders/checkout/ — address is required only for courier delivery."""
-
-    delivery_method = serializers.ChoiceField(choices=Order.Delivery.choices, default=Order.Delivery.COURIER)
-    payment_method = serializers.ChoiceField(choices=Order.Payment.choices, default=Order.Payment.CASH)
-    shipping_address = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    delivery_method = serializers.ChoiceField(
+        choices=Order.Delivery.choices,
+        default=Order.Delivery.COURIER
+    )
+    payment_method = serializers.ChoiceField(
+        choices=Order.Payment.choices,
+        default=Order.Payment.CASH
+    )
+    shipping_address = serializers.CharField(
+        max_length=255, required=False, allow_blank=True
+    )
     phone = serializers.CharField(max_length=20)
-    comment = serializers.CharField(max_length=500, required=False, allow_blank=True)
+    comment = serializers.CharField(
+        max_length=500, required=False, allow_blank=True
+    )
+
+    def validate_phone(self, value):
+        phone = re.sub(r"[\s()\-]", "", value)
+
+        if not re.fullmatch(r"(?:\+7|7|8)[0-9]{10}", phone):
+            raise serializers.ValidationError(
+                "Enter a valid Kazakhstan phone number."
+            )
+
+        return phone
 
     def validate(self, attrs):
-        if attrs["delivery_method"] == Order.Delivery.COURIER and not attrs.get("shipping_address", "").strip():
-            raise serializers.ValidationError({"shipping_address": "Enter the delivery address."})
+        if attrs["delivery_method"] == Order.Delivery.COURIER:
+            address = attrs.get("shipping_address", "").strip()
+
+            if not address:
+                raise serializers.ValidationError({
+                    "shipping_address": "Enter the delivery address."
+                })
+
+            if len(address) < 10:
+                raise serializers.ValidationError({
+                    "shipping_address": "Enter a complete delivery address."
+                })
+
         return attrs
 
 

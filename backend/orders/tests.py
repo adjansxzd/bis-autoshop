@@ -94,7 +94,7 @@ class ShopFlowTests(APITestCase):
         CartItem.objects.create(cart=cart, product=product, quantity=2)
 
         order_count = Order.objects.count()
-        res = self.client.post("/api/orders/checkout/", {"shipping_address": "Almaty", "phone": "+77001234567"})
+        res = self.client.post("/api/orders/checkout/", {"shipping_address": "Almaty, Tole bi 59", "phone": "+77001234567"})
 
         self.assertEqual(res.status_code, 400)
         self.assertIn("Not enough stock", str(res.data))
@@ -111,7 +111,7 @@ class ShopFlowTests(APITestCase):
         stock = WarehouseStock.objects.get(warehouse=warehouse, product=product)
         starting_quantity = stock.quantity
         self.client.post("/api/cart/items/", {"product_id": product.id, "quantity": 2})
-        order_res = self.client.post("/api/orders/checkout/", {"shipping_address": "Almaty", "phone": "+77001234567"})
+        order_res = self.client.post("/api/orders/checkout/", {"shipping_address": "Almaty, Tole bi 59", "phone": "+77001234567"})
         self.assertEqual(order_res.status_code, 201, order_res.data)
 
         self.client.credentials()
@@ -134,7 +134,7 @@ class ShopFlowTests(APITestCase):
         stock = WarehouseStock.objects.get(warehouse=warehouse, product=product)
         starting_quantity = stock.quantity
         self.client.post("/api/cart/items/", {"product_id": product.id, "quantity": 2})
-        order_res = self.client.post("/api/orders/checkout/", {"shipping_address": "Almaty", "phone": "+77001234567"})
+        order_res = self.client.post("/api/orders/checkout/", {"shipping_address": "Almaty, Tole bi 59", "phone": "+77001234567"})
         self.assertEqual(order_res.status_code, 201, order_res.data)
 
         self.client.credentials()
@@ -181,7 +181,7 @@ class ShopFlowTests(APITestCase):
 
     def test_checkout_empty_cart_fails(self):
         self.login("customer")
-        res = self.client.post("/api/orders/checkout/", {"shipping_address": "Almaty", "phone": "+77001234567"})
+        res = self.client.post("/api/orders/checkout/", {"shipping_address": "Almaty, Tole bi 59", "phone": "+77001234567"})
         self.assertEqual(res.status_code, 400)
 
     def test_user_can_place_several_orders(self):
@@ -189,7 +189,7 @@ class ShopFlowTests(APITestCase):
         for sku in ("BR-001", "OIL-001"):
             product = Product.objects.get(sku=sku)
             self.client.post("/api/cart/items/", {"product_id": product.id, "quantity": 1})
-            res = self.client.post("/api/orders/checkout/", {"shipping_address": "Almaty", "phone": "+77001234567"})
+            res = self.client.post("/api/orders/checkout/", {"shipping_address": "Almaty, Tole bi 59", "phone": "+77001234567"})
             self.assertEqual(res.status_code, 201)
         self.assertEqual(self.client.get("/api/orders/").data["count"], 2)
 
@@ -197,7 +197,7 @@ class ShopFlowTests(APITestCase):
         self.login("customer")
         for sku in ("BR-001", "FL-001", "LT-001"):
             self.client.post("/api/cart/items/", {"product_id": Product.objects.get(sku=sku).id, "quantity": 2})
-        res = self.client.post("/api/orders/checkout/", {"shipping_address": "Almaty", "phone": "+77001234567"})
+        res = self.client.post("/api/orders/checkout/", {"shipping_address": "Almaty, Tole bi 59", "phone": "+77001234567"})
         self.assertEqual(len(res.data["items"]), 3)
 
     def test_out_of_stock_product_cannot_be_added(self):
@@ -221,7 +221,7 @@ class ShopFlowTests(APITestCase):
         start = product.stock
         self.login("customer")
         self.client.post("/api/cart/items/", {"product_id": product.id, "quantity": 3})
-        order = self.client.post("/api/orders/checkout/", {"shipping_address": "Almaty", "phone": "+77001234567"}).data
+        order = self.client.post("/api/orders/checkout/", {"shipping_address": "Almaty, Tole bi 59", "phone": "+77001234567"}).data
         self.login("manager")
         self.client.patch(f"/api/orders/{order['id']}/status/", {"status": "cancelled"})
         product.refresh_from_db()
@@ -231,7 +231,7 @@ class ShopFlowTests(APITestCase):
         User.objects.create_user("other", "o@test.kz", "Strong!pass77")
         self.login("other", "Strong!pass77")
         self.client.post("/api/cart/items/", {"product_id": Product.objects.get(sku="BR-001").id, "quantity": 1})
-        self.client.post("/api/orders/checkout/", {"shipping_address": "Almaty", "phone": "+77001234567"})
+        self.client.post("/api/orders/checkout/", {"shipping_address": "Almaty, Tole bi 59", "phone": "+77001234567"})
         self.login("customer")
         self.assertEqual(self.client.get("/api/orders/").data["count"], 0)
 
@@ -242,7 +242,7 @@ class ShopFlowTests(APITestCase):
         self.login("customer")
         product = Product.objects.get(sku=sku)
         self.assertEqual(self.client.post("/api/cart/items/", {"product_id": product.id, "quantity": quantity}).status_code, 201)
-        res = self.client.post("/api/orders/checkout/", {"shipping_address": "Almaty", "phone": "+77001234567"})
+        res = self.client.post("/api/orders/checkout/", {"shipping_address": "Almaty, Tole bi 59", "phone": "+77001234567"})
         self.assertEqual(res.status_code, 201, res.data)
         self.client.credentials()
         self.login("manager")
@@ -264,7 +264,7 @@ class ShopFlowTests(APITestCase):
         CartItem.objects.create(cart=cart, product=short_product, quantity=2)
         start = self.main_stock("BR-001")
 
-        res = self.client.post("/api/orders/checkout/", {"shipping_address": "Almaty", "phone": "+77001234567"})
+        res = self.client.post("/api/orders/checkout/", {"shipping_address": "Almaty, Tole bi 59", "phone": "+77001234567"})
 
         self.assertEqual(res.status_code, 400)
         self.assertIn("Available: 1", str(res.data))
@@ -279,7 +279,7 @@ class ShopFlowTests(APITestCase):
         cart, _ = Cart.objects.get_or_create(user=User.objects.get(username="customer"))
         CartItem.objects.create(cart=cart, product=product, quantity=1)
 
-        res = self.client.post("/api/orders/checkout/", {"shipping_address": "Almaty", "phone": "+77001234567"})
+        res = self.client.post("/api/orders/checkout/", {"shipping_address": "Almaty, Tole bi 59", "phone": "+77001234567"})
 
         self.assertEqual(res.status_code, 400)
         self.assertIn("Available: 0", str(res.data))
@@ -459,3 +459,48 @@ class OrderProcessTests(APITestCase):
         res = self.client.post(f"/api/orders/{order['id']}/reorder/").data
         self.assertEqual(len(res["added"]), 1)
         self.assertEqual(self.client.get("/api/cart/").data["items"][0]["quantity"], 2)
+
+from django.test import SimpleTestCase
+from orders.serializers import CheckoutSerializer
+
+
+class CheckoutValidationTests(SimpleTestCase):
+
+    def test_invalid_phone(self):
+        serializer = CheckoutSerializer(data={
+            "shipping_address": "Almaty, Tole bi 59",
+            "phone": "23849343"
+        })
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("phone", serializer.errors)
+
+    def test_short_address(self):
+        serializer = CheckoutSerializer(data={
+            "shipping_address": "abc",
+            "phone": "+77001234567"
+        })
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("shipping_address", serializer.errors)
+
+    def test_valid_checkout(self):
+        serializer = CheckoutSerializer(data={
+            "shipping_address": "Almaty, Tole bi 59",
+            "phone": "+77001234567"
+        })
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+
+    def test_pickup_without_address(self):
+        serializer = CheckoutSerializer(data={
+            "delivery_method": "pickup",
+            "shipping_address": "",
+            "phone": "+77001234567"
+        })
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+
+    def test_empty_phone(self):
+        serializer = CheckoutSerializer(data={
+            "shipping_address": "Almaty, Tole bi 59",
+            "phone": ""
+        })
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("phone", serializer.errors)

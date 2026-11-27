@@ -85,9 +85,19 @@ export class CartPage implements OnInit {
     return free ? '0 ₸' : Math.round(Number(o.courier_price)).toLocaleString('ru-RU') + ' ₸';
   }
 
-  canPlace() {
-    return !!this.phone.trim() && (this.delivery() === 'pickup' || !!this.address.trim());
-  }
+  isPhoneValid(): boolean {
+  const phone = this.phone.replace(/[\s()\-]/g, '');
+  return /^(?:\+7|7|8)[0-9]{10}$/.test(phone);
+}
+
+isAddressValid(): boolean {
+  return this.delivery() === 'pickup'
+    || this.address.trim().length >= 10;
+}
+
+canPlace(): boolean {
+  return this.isPhoneValid() && this.isAddressValid();
+}
 
   checkout() {
     this.error.set('');
