@@ -38,7 +38,11 @@ class Order(models.Model):
 
     class Payment(models.TextChoices):
         CARD = "card", "Card online (demo)"
+        KASPI = "kaspi", "Kaspi QR (demo)"
         CASH = "cash", "Cash or card on delivery"
+
+    # paid online before shipping (both are demo payments: no real money, no card data)
+    ONLINE_PAYMENTS = ("card", "kaspi")
 
     class Status(models.TextChoices):
         NEW = "new", "New"

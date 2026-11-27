@@ -1,6 +1,7 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
 from django.db.models import Q
+from django.utils.translation import gettext as _
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
@@ -23,7 +24,7 @@ from .services import (
 
 
 def get_cart(user):
-    cart, _ = Cart.objects.get_or_create(user=user)
+    cart, _created = Cart.objects.get_or_create(user=user)
     return cart
 
 
@@ -66,7 +67,9 @@ class CartItemViewSet(mixins.CreateModelMixin, mixins.UpdateModelMixin, mixins.D
         item.quantity += quantity
         available = get_available_stock(product)
         if item.quantity > available:
-            raise ValidationError({"quantity": f"Only {available} in stock."})
+            if created:  # don't leave an empty (quantity 0) line in the cart
+                item.delete()
+            raise ValidationError({"quantity": _("Only {available} in stock.").format(available=available)})
         item.save()
         return Response(self.get_serializer(item).data, status=status.HTTP_201_CREATED)
 
@@ -110,9 +113,10 @@ class OrderViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.Ge
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
         cart = get_cart(request.user)
+        cart.items.filter(quantity__lte=0).delete()  # safety: empty lines never become order lines
         items = list(cart.items.select_related("product").select_for_update().order_by("pk"))
         if not items:
-            raise ValidationError({"cart": "Cart is empty."})
+            raise ValidationError({"cart": _("Cart is empty.")})
 
         try:
             order = place_order(
@@ -169,12 +173,12 @@ class OrderViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.Ge
         """'Order again': puts the items of a past order back into the cart (as many as are in stock)."""
         order = self.get_object()
         if order.user_id != request.user.id:
-            raise ValidationError({"detail": "You can reorder only your own order."})
+            raise ValidationError({"detail": _("You can reorder only your own order.")})
         cart = get_cart(request.user)
         added, skipped = [], []
         for line in order.items.select_related("product"):
             product = line.product
-            item, _ = CartItem.objects.get_or_create(cart=cart, product=product, defaults={"quantity": 0})
+            item, _created = CartItem.objects.get_or_create(cart=cart, product=product, defaults={"quantity": 0})
             room = get_available_stock(product) - item.quantity
             qty = min(line.quantity, room)
             if not product.is_active or qty <= 0:

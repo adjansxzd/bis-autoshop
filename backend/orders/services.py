@@ -7,6 +7,7 @@ from inventory.services import get_main_warehouse, issue_stock_for_order, return
 from decimal import Decimal
 
 from django.utils import timezone
+from django.utils.translation import gettext as _
 
 from .models import Order, OrderEvent, OrderItem
 
@@ -35,13 +36,13 @@ def validate_status_transition(current, new):
     if current == new:
         return
     if current == Order.Status.CANCELLED:
-        raise ValidationError("A cancelled order cannot be reopened.")
+        raise ValidationError(_("A cancelled order cannot be reopened."))
     if new == Order.Status.CANCELLED:
         if current not in CANCELLABLE_STATUSES:
-            raise ValidationError(f"An order in status '{current}' cannot be cancelled.")
+            raise ValidationError(_("An order in status '{current}' cannot be cancelled.").format(current=current))
         return
     if STATUS_FLOW.index(new) < STATUS_FLOW.index(current):
-        raise ValidationError(f"Order status cannot go back from '{current}' to '{new}'.")
+        raise ValidationError(_("Order status cannot go back from '{current}' to '{new}'.").format(current=current, new=new))
 
 
 @transaction.atomic
@@ -66,23 +67,25 @@ def change_order_status(order, new_status, user, note=""):
 
 @transaction.atomic
 def pay_order(order, user):
-    """Demo online payment: no card data is collected, the order just becomes 'paid'."""
+    """Demo online payment (card or Kaspi QR): no card data is collected, the order just becomes 'paid'."""
     if order.user_id != user.id:
-        raise ValidationError("You can pay only for your own order.")
-    if order.payment_method != Order.Payment.CARD:
-        raise ValidationError("This order is paid on delivery.")
+        raise ValidationError(_("You can pay only for your own order."))
+    if order.payment_method not in Order.ONLINE_PAYMENTS:
+        raise ValidationError(_("This order is paid on delivery."))
     if order.status != Order.Status.NEW:
-        raise ValidationError("Only a new, unpaid order can be paid.")
-    return change_order_status(order, Order.Status.PAID, user, note="Paid online (demo payment, no real money)")
+        raise ValidationError(_("Only a new, unpaid order can be paid."))
+    note = ("Paid with Kaspi QR (demo payment, no real money)" if order.payment_method == Order.Payment.KASPI
+            else "Paid online (demo payment, no real money)")
+    return change_order_status(order, Order.Status.PAID, user, note=note)
 
 
 @transaction.atomic
 def cancel_by_customer(order, user, reason=""):
     """A customer cancels their own order while it is new or paid; items go back to the warehouse."""
     if order.user_id != user.id:
-        raise ValidationError("You can cancel only your own order.")
+        raise ValidationError(_("You can cancel only your own order."))
     note = f"Cancelled by customer{': ' + reason.strip() if reason.strip() else ''}"
-    if order.status == Order.Status.PAID and order.payment_method == Order.Payment.CARD:
+    if order.status == Order.Status.PAID and order.payment_method in Order.ONLINE_PAYMENTS:
         note += " · refund issued (demo)"
     return change_order_status(order, Order.Status.CANCELLED, user, note=note[:255])
 
@@ -102,7 +105,7 @@ def place_order(user, lines, shipping_address, phone, delivery_method=Order.Deli
         else:
             merged[product.pk] = (product, quantity)
     if not merged:
-        raise ValidationError("Cart is empty.")
+        raise ValidationError(_("Cart is empty."))
 
     warehouse = get_main_warehouse()
     if warehouse is None:

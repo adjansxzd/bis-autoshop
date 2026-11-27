@@ -8,7 +8,7 @@ MANAGERS_GROUP = "Managers"
 MANAGER_PERMISSIONS = {
     "catalog": ["product", "category", "brand", "carmodel", "review"],  # full CRUD + review moderation
     "orders": ["order"],                                              # view + change status
-    "inventory": ["warehouse", "warehousestock", "stockreceipt", "stockreceiptitem", "stockmovement"],
+    "inventory": ["warehouse", "warehousestock", "stockreceipt", "stockreceiptitem", "stockmovement", "supplier"],
 }
 MANAGER_ACTIONS = {
     "product": ["view", "add", "change", "delete"],
@@ -23,6 +23,7 @@ MANAGER_ACTIONS = {
     "stockreceipt": ["view", "add", "change"],
     "stockreceiptitem": ["view", "add", "change", "delete"],
     "stockmovement": ["view"],
+    "supplier": ["view", "add", "change"],  # Daulet's suppliers table: managers keep supplier contacts up to date
 }
 
 

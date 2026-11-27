@@ -1,3 +1,4 @@
+from django.utils.translation import gettext as _
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
@@ -21,7 +22,7 @@ class CartItemSerializer(serializers.ModelSerializer):
 
     def validate_quantity(self, value):
         if value < 1:
-            raise serializers.ValidationError("Quantity must be at least 1.")
+            raise serializers.ValidationError(_("Quantity must be at least 1."))
         return value
 
     def validate(self, attrs):
@@ -31,9 +32,9 @@ class CartItemSerializer(serializers.ModelSerializer):
         if product is not None:
             available = get_available_stock(product)
             if available == 0:
-                raise serializers.ValidationError({"quantity": "This product is out of stock."})
+                raise serializers.ValidationError({"quantity": _("This product is out of stock.")})
             if self.instance is not None and quantity is not None and quantity > available:
-                raise serializers.ValidationError({"quantity": f"Only {available} in stock."})
+                raise serializers.ValidationError({"quantity": _("Only {available} in stock.").format(available=available)})
         return attrs
 
 
@@ -87,7 +88,7 @@ class OrderSerializer(serializers.ModelSerializer):
 
     @extend_schema_field(serializers.BooleanField())
     def get_can_pay(self, obj):
-        return obj.status == Order.Status.NEW and obj.payment_method == Order.Payment.CARD
+        return obj.status == Order.Status.NEW and obj.payment_method in Order.ONLINE_PAYMENTS
 
     @extend_schema_field(serializers.BooleanField())
     def get_can_cancel(self, obj):
@@ -105,7 +106,7 @@ class CheckoutSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         if attrs["delivery_method"] == Order.Delivery.COURIER and not attrs.get("shipping_address", "").strip():
-            raise serializers.ValidationError({"shipping_address": "Enter the delivery address."})
+            raise serializers.ValidationError({"shipping_address": _("Enter the delivery address.")})
         return attrs
 
 

@@ -37,6 +37,7 @@ export interface Product {
   in_stock: boolean;
   image_url: string;
   image: string | null; // uploaded photo URL (null → show the category icon)
+  model_3d?: string | null;
   oem_numbers: string;
   specs: Spec[];
   rating_avg: number | null;
@@ -166,7 +167,7 @@ export interface Order {
   id: number;
   status: OrderStatus;
   delivery_method: 'courier' | 'pickup';
-  payment_method: 'card' | 'cash';
+  payment_method: 'card' | 'kaspi' | 'cash';
   shipping_address: string;
   phone: string;
   comment: string;
@@ -183,7 +184,7 @@ export interface Order {
 
 export interface CheckoutData {
   delivery_method: 'courier' | 'pickup';
-  payment_method: 'card' | 'cash';
+  payment_method: 'card' | 'kaspi' | 'cash';
   shipping_address: string;
   phone: string;
   comment: string;
@@ -201,4 +202,11 @@ export interface GarageCar {
   make: string;
   model: string;
   year: number;
+}
+
+/** Category order of the seed data / Figma (brakes, oil, filters, …); unknown categories go last. */
+const CATEGORY_ORDER = ['brakes', 'engine-oil', 'filters', 'lighting', 'suspension', 'ignition', 'electrics', 'cooling', 'tires', 'body', 'care', 'accessories'];
+export function sortCategories(list: Category[]): Category[] {
+  const rank = (c: Category) => { const i = CATEGORY_ORDER.indexOf(c.slug); return i === -1 ? 999 : i; };
+  return [...list].sort((a, b) => rank(a) - rank(b) || a.name_en.localeCompare(b.name_en));
 }

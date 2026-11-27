@@ -1,4 +1,5 @@
 from django.db.models import Count, Max, Min, Q
+from django.utils.translation import gettext as _
 from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
 from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
@@ -91,7 +92,7 @@ class ProductViewSet(viewsets.ModelViewSet):
             if not has_bought(request.user, product):
                 raise PermissionDenied("You can review a product only after buying it.")
             if Review.objects.filter(product=product, user=request.user).exists():
-                raise ValidationError({"detail": "You have already reviewed this product. Edit your review instead."})
+                raise ValidationError({"detail": _("You have already reviewed this product. Edit your review instead.")})
             serializer = ReviewSerializer(data=request.data, context={"request": request})
             serializer.is_valid(raise_exception=True)
             serializer.save(product=product, user=request.user)

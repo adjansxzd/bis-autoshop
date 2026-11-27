@@ -21,8 +21,8 @@ import { Component, computed, input, output, signal } from '@angular/core';
   styles: `
     .stars { display: inline-flex; gap: 1px; line-height: 1; color: var(--line); }
     i { font-style: normal; position: relative; }
-    i.on, button.on { color: #f5a400; }
-    i.half { background: linear-gradient(90deg, #f5a400 50%, var(--line) 50%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    i.on, button.on { color: var(--star); }
+    i.half { background: linear-gradient(90deg, var(--star) 50%, var(--line) 50%); -webkit-background-clip: text; background-clip: text; color: transparent; }
     button { background: none; border: 0; padding: 0 2px; font: inherit; color: var(--line); cursor: pointer; transition: transform .1s;
       &:hover { transform: scale(1.15); } }
   `,

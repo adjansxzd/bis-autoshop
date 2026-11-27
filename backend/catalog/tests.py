@@ -6,6 +6,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
 from django.test import TestCase, override_settings
 from PIL import Image
+from rest_framework.test import APITestCase
 
 from catalog.models import Product, Review
 from orders.models import Order
@@ -130,3 +131,26 @@ class CatalogTests(TestCase):
         self.assertEqual(by_status["count"], 2)
         # other customers' orders never appear
         self.assertEqual(self.client.get("/api/orders/?q=Castrol", **self.token("customer", "demo12345")).json()["count"], 0)
+
+
+class Product3DModelTests(APITestCase):
+    """Optional 3D model per product: seeded for a few parts, only real .glb files are accepted."""
+
+    @classmethod
+    def setUpTestData(cls):
+        call_command("seed", verbosity=0)
+
+    def test_seeded_parts_have_a_3d_model_in_the_api(self):
+        product = Product.objects.get(sku="BR-002")
+        data = self.client.get(f"/api/products/{product.id}/").data
+        self.assertTrue(data["model_3d"].endswith(".glb"))
+        plain = Product.objects.get(sku="BR-001")
+        self.assertFalse(self.client.get(f"/api/products/{plain.id}/").data["model_3d"])
+
+    def test_only_binary_gltf_is_accepted(self):
+        from django.core.exceptions import ValidationError
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from catalog.models import validate_glb
+        validate_glb(SimpleUploadedFile("ok.glb", b"glTF" + b"\x00" * 20))
+        with self.assertRaises(ValidationError):
+            validate_glb(SimpleUploadedFile("fake.glb", b"<html>not a model</html>"))

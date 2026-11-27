@@ -1,128 +1,125 @@
-<section class="hero">
-  <div class="container hero-grid">
-    <div class="hero-text">
-      <span class="kicker">{{ 'hero.kicker' | t }}</span>
-      <h1>{{ 'hero.title' | t }}</h1>
-      <p>{{ 'hero.sub' | t }}</p>
-      <ul class="perks">
-        <li><span>✓</span>{{ 'perk.fit' | t }}</li>
-        <li><span>✓</span>{{ 'perk.stock' | t }}</li>
-        <li><span>✓</span>{{ 'perk.delivery' | t }}</li>
-      </ul>
-    </div>
-    <!-- Year / Make / Model: the main idea of our shop -->
+<div class="container home">
+  <!-- Make / Model / Year: the catalog then shows only parts that fit this car -->
+  <section id="vehicle">
     <app-ymm-selector [cars]="cars()" (picked)="onCarPicked()" />
-  </div>
-</section>
+  </section>
 
-<section class="container tiles">
-  @for (c of categories(); track c.id) {
-    <button type="button" class="tile card" [class.active]="filters.category === c.slug" (click)="pickCategory(filters.category === c.slug ? '' : c.slug)">
-      <app-part-icon [name]="c.icon" [size]="30" />
-      <span>{{ c | loc: 'name' }}</span>
-    </button>
-  }
-</section>
+  <!-- ===== Catalog ===== -->
+  <section class="catalog" id="parts">
+    <h1 class="cat-title">{{ filters.category ? (currentCategory() | loc: 'name') : ('home.all_parts' | t) }}</h1>
 
-<div class="container layout" id="parts">
-  <aside class="filters card">
-    <h4>{{ 'filter.categories' | t }}</h4>
-    <ul class="cats">
-      <li><button [class.active]="!filters.category" (click)="pickCategory('')">{{ 'filter.all' | t }}</button></li>
-      @for (c of categories(); track c.id) {
-        <li>
-          <button [class.active]="filters.category === c.slug" (click)="pickCategory(c.slug)">
-            <span>{{ c | loc: 'name' }}</span><em>{{ c.product_count }}</em>
-          </button>
-        </li>
-      }
-    </ul>
+    <div class="layout">
+      <aside class="filters card">
+        <div class="f-head"><b>{{ 'filter.title' | t }}</b> <button type="button" (click)="reset()">{{ 'filter.reset_short' | t }}</button></div>
 
-    <h4>{{ 'filter.brand' | t }}</h4>
-    <select [(ngModel)]="filters.brand" (ngModelChange)="apply()">
-      <option [ngValue]="null">{{ 'filter.any_brand' | t }}</option>
-      @for (b of brands(); track b.id) { <option [ngValue]="b.id">{{ b.name }}</option> }
-    </select>
 
-    <h4>{{ 'filter.price' | t }} <small>₸</small></h4>
-    @if (priceBounds().max > priceBounds().min) {
-      <div class="price">
-        <div class="price-inputs">
-          <input type="number" [min]="priceBounds().min" [max]="priceBounds().max" step="500"
-                 [placeholder]="priceBounds().min" [ngModel]="filters.min_price" (change)="setPrice('min', $any($event.target).value)"
-                 [attr.aria-label]="'filter.price_from' | t" />
-          <span>—</span>
-          <input type="number" [min]="priceBounds().min" [max]="priceBounds().max" step="500"
-                 [placeholder]="priceBounds().max" [ngModel]="filters.max_price" (change)="setPrice('max', $any($event.target).value)"
-                 [attr.aria-label]="'filter.price_to' | t" />
-        </div>
-        <!-- two range inputs on one track = a dual slider -->
-        <div class="dual">
-          <div class="track"><div class="fill"
-               [style.left.%]="(((filters.min_price ?? priceBounds().min) - priceBounds().min) / (priceBounds().max - priceBounds().min)) * 100"
-               [style.right.%]="100 - (((filters.max_price ?? priceBounds().max) - priceBounds().min) / (priceBounds().max - priceBounds().min)) * 100"></div></div>
-          <input type="range" [min]="priceBounds().min" [max]="priceBounds().max" step="500"
-                 [value]="filters.min_price ?? priceBounds().min" (change)="setPrice('min', $any($event.target).value)"
-                 [attr.aria-label]="'filter.price_from' | t" />
-          <input type="range" [min]="priceBounds().min" [max]="priceBounds().max" step="500"
-                 [value]="filters.max_price ?? priceBounds().max" (change)="setPrice('max', $any($event.target).value)"
-                 [attr.aria-label]="'filter.price_to' | t" />
-        </div>
-        <div class="price-hint">
-          {{ (filters.min_price ?? priceBounds().min) | kzt }} – {{ (filters.max_price ?? priceBounds().max) | kzt }}
-          @if (filters.min_price != null || filters.max_price != null) { <button type="button" (click)="clearPrice()">✕</button> }
-        </div>
-      </div>
-    }
+        <h4>{{ 'filter.categories' | t }}</h4>
+        <ul class="opts">
+          <li><label class="check"><input type="radio" name="cat" [checked]="!filters.category" (change)="pickCategory('')" /><span>{{ 'filter.all' | t }}</span></label></li>
+          @for (c of sortedCategories(); track c.id) {
+            <li><label class="check"><input type="radio" name="cat" [checked]="filters.category === c.slug" (change)="pickCategory(c.slug)" />
+              <span>{{ c | loc: 'name' }}</span><em>{{ c.product_count }}</em></label></li>
+          }
+        </ul>
 
-    <label class="check">
-      <input type="checkbox" [(ngModel)]="filters.in_stock" (ngModelChange)="apply()" />
-      {{ 'filter.in_stock' | t }}
-    </label>
+        <h4>{{ 'filter.brand' | t }}</h4>
+        <ul class="opts">
+          <li><label class="check"><input type="radio" name="brand" [checked]="filters.brand == null" (change)="pickBrand(null)" /><span>{{ 'filter.any_brand' | t }}</span></label></li>
+          @for (b of visibleBrands(); track b.id) {
+            <li><label class="check"><input type="radio" name="brand" [checked]="filters.brand === b.id" (change)="pickBrand(b.id)" /><span>{{ b.name }}</span></label></li>
+          }
+        </ul>
+        @if (brands().length > 6) {
+          <button type="button" class="more" (click)="allBrands.set(!allBrands())">{{ (allBrands() ? 'filter.less' : 'filter.more') | t }} ⌄</button>
+        }
 
-    <button class="btn ghost block" (click)="reset()">{{ 'filter.reset' | t }}</button>
-  </aside>
+        <h4>{{ 'filter.price' | t }}, ₸</h4>
+        @if (priceBounds().max > priceBounds().min) {
+          <div class="price">
+            <div class="price-inputs">
+              <input type="number" [min]="priceBounds().min" [max]="priceBounds().max" step="500"
+                     [placeholder]="priceBounds().min" [ngModel]="filters.min_price" (change)="setPrice('min', $any($event.target).value)"
+                     [attr.aria-label]="'filter.price_from' | t" />
+              <span>—</span>
+              <input type="number" [min]="priceBounds().min" [max]="priceBounds().max" step="500"
+                     [placeholder]="priceBounds().max" [ngModel]="filters.max_price" (change)="setPrice('max', $any($event.target).value)"
+                     [attr.aria-label]="'filter.price_to' | t" />
+            </div>
+            <!-- two range inputs on one track = a dual slider -->
+            <div class="dual">
+              <div class="track"><div class="fill"
+                   [style.left.%]="(((filters.min_price ?? priceBounds().min) - priceBounds().min) / (priceBounds().max - priceBounds().min)) * 100"
+                   [style.right.%]="100 - (((filters.max_price ?? priceBounds().max) - priceBounds().min) / (priceBounds().max - priceBounds().min)) * 100"></div></div>
+              <input type="range" [min]="priceBounds().min" [max]="priceBounds().max" step="500"
+                     [value]="filters.min_price ?? priceBounds().min" (change)="setPrice('min', $any($event.target).value)"
+                     [attr.aria-label]="'filter.price_from' | t" />
+              <input type="range" [min]="priceBounds().min" [max]="priceBounds().max" step="500"
+                     [value]="filters.max_price ?? priceBounds().max" (change)="setPrice('max', $any($event.target).value)"
+                     [attr.aria-label]="'filter.price_to' | t" />
+            </div>
+            <div class="price-hint">
+              {{ (filters.min_price ?? priceBounds().min) | kzt }} – {{ (filters.max_price ?? priceBounds().max) | kzt }}
+              @if (filters.min_price != null || filters.max_price != null) { <button type="button" (click)="clearPrice()">✕</button> }
+            </div>
+          </div>
+        }
 
-  <main>
-    <div class="toolbar">
-      <div class="count">
-        <b>{{ total() }}</b> {{ 'catalog.found' | t }}
-        @if (garage.car(); as car) {
-          <label class="fit-toggle">
-            <input type="checkbox" [(ngModel)]="onlyMyCar" (ngModelChange)="apply()" />
-            {{ 'filter.fits_only' | t }} <b>{{ garage.label() }}</b>
+        <label class="check stock">
+          <input type="checkbox" [(ngModel)]="filters.in_stock" (ngModelChange)="apply()" />
+          <span>{{ 'filter.in_stock' | t }}</span>
+        </label>
+
+      </aside>
+
+      <div class="results">
+        <div class="toolbar">
+          <div class="count">
+            <span>{{ total() }} {{ 'catalog.found' | t }}</span>
+            @if (garage.car()) {
+              <label class="switch">
+                <input type="checkbox" [(ngModel)]="onlyMyCar" (ngModelChange)="apply()" />
+                {{ 'filter.fits_only' | t }} {{ garage.car()!.model }}
+              </label>
+            }
+          </div>
+          <label class="sort">
+            <select [(ngModel)]="filters.ordering" (ngModelChange)="apply()" [attr.aria-label]="'sort.label' | t">
+              <option value="-created_at">{{ 'sort.label' | t }}: {{ 'sort.new' | t }}</option>
+              <option value="price">{{ 'sort.label' | t }}: {{ 'sort.price_asc' | t }}</option>
+              <option value="-price">{{ 'sort.label' | t }}: {{ 'sort.price_desc' | t }}</option>
+              <option value="-rating_avg">{{ 'sort.label' | t }}: {{ 'sort.rating' | t }}</option>
+              <option value="-rating_count">{{ 'sort.label' | t }}: {{ 'sort.reviews' | t }}</option>
+            </select>
           </label>
+        </div>
+
+        @if (error()) {
+          <div class="state error">{{ 'catalog.error' | t }}</div>
+        } @else if (loading() && products().length === 0) {
+          <div class="state">{{ 'catalog.loading' | t }}</div>
+        } @else if (products().length === 0) {
+          <!-- Figma: 11 No results -->
+          <div class="state card">
+            <h3>{{ 'empty.no_parts' | t }}</h3>
+            <p>{{ 'catalog.empty' | t }}</p>
+            <button class="btn" type="button" (click)="onlyMyCar = false; reset()">{{ 'filter.reset' | t }}</button>
+          </div>
+        } @else {
+          <div class="grid" [class.dim]="loading()">
+            @for (p of products(); track p.id) { <app-product-card [product]="p" [showFit]="!onlyMyCar" /> }
+          </div>
+          @if (totalPages() > 1) {
+            <nav class="pager" aria-label="Pages">
+              <button type="button" [disabled]="filters.page === 1" (click)="goToPage(filters.page! - 1)" [attr.aria-label]="'page.prev' | t">‹</button>
+              @for (n of pages(); track n) {
+                <button type="button" [class.on]="filters.page === n" (click)="goToPage(n)">{{ n }}</button>
+              }
+              <button type="button" [disabled]="filters.page === totalPages()" (click)="goToPage(filters.page! + 1)" [attr.aria-label]="'page.next' | t">›</button>
+            </nav>
+          }
         }
       </div>
-      <label class="sort">
-        {{ 'sort.label' | t }}
-        <select [(ngModel)]="filters.ordering" (ngModelChange)="apply()">
-          <option value="-created_at">{{ 'sort.new' | t }}</option>
-          <option value="price">{{ 'sort.price_asc' | t }}</option>
-          <option value="-price">{{ 'sort.price_desc' | t }}</option>
-          <option value="-rating_avg">{{ 'sort.rating' | t }}</option>
-          <option value="-rating_count">{{ 'sort.reviews' | t }}</option>
-        </select>
-      </label>
     </div>
+  </section>
 
-    @if (error()) {
-      <div class="state error">{{ 'catalog.error' | t }}</div>
-    } @else if (loading() && products().length === 0) {
-      <div class="state">{{ 'catalog.loading' | t }}</div>
-    } @else if (products().length === 0) {
-      <div class="state">{{ 'catalog.empty' | t }}</div>
-    } @else {
-      <div class="grid" [class.dim]="loading()">
-        @for (p of products(); track p.id) { <app-product-card [product]="p" /> }
-      </div>
-      @if (totalPages() > 1) {
-        <nav class="pager">
-          <button class="btn ghost" [disabled]="filters.page === 1" (click)="goToPage(filters.page! - 1)">← {{ 'page.prev' | t }}</button>
-          <span>{{ filters.page }} / {{ totalPages() }}</span>
-          <button class="btn ghost" [disabled]="filters.page === totalPages()" (click)="goToPage(filters.page! + 1)">{{ 'page.next' | t }} →</button>
-        </nav>
-      }
-    }
-  </main>
 </div>

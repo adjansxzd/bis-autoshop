@@ -1,4 +1,5 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive } from '@angular/router';
@@ -15,7 +16,7 @@ import { TPipe } from '../../shared/t.pipe';
 
 @Component({
   selector: 'app-header',
-  imports: [RouterLink, RouterLinkActive, FormsModule, TPipe],
+  imports: [RouterLink, RouterLinkActive, FormsModule, NgTemplateOutlet, TPipe],
   templateUrl: './header.html',
   styleUrl: './header.scss',
 })

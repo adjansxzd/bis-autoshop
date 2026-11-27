@@ -1,0 +1,82 @@
+{% extends "admin/base_site.html" %}
+{% load humanize %}
+{% block breadcrumbs %}<div class="breadcrumbs"><a href="{% url 'admin:index' %}">Home</a> › Sales analytics</div>{% endblock %}
+{% block extrastyle %}{{ block.super }}
+<style>
+  .an { display: grid; gap: 20px; max-width: 1200px; }
+  .an-periods a { display: inline-block; padding: 6px 12px; border-radius: 8px; margin-right: 4px; border: 1px solid var(--hairline-color); }
+  .an-periods a.on { background: var(--button-bg); color: #fff; border-color: transparent; }
+  .an-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+  .an-kpi { padding: 16px; border: 1px solid var(--hairline-color); border-radius: 10px; background: var(--body-bg); }
+  .an-kpi small { display: block; color: var(--body-quiet-color); font-size: 12px; }
+  .an-kpi b { font-size: 24px; }
+  .an-box { padding: 16px; border: 1px solid var(--hairline-color); border-radius: 10px; }
+  .an-box h2 { margin: 0 0 12px; font-size: 15px; background: none; color: var(--body-fg); padding: 0; }
+  .an-two { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .an-chart { display: flex; align-items: flex-end; gap: 2px; height: 160px; border-bottom: 1px solid var(--hairline-color); }
+  .an-chart i { flex: 1; background: #d91f26; border-radius: 2px 2px 0 0; min-height: 1px; }
+  .an-chart i:hover { background: #8f1015; }
+  .an-axis { display: flex; justify-content: space-between; color: var(--body-quiet-color); font-size: 11px; margin-top: 4px; }
+  .an-bar { display: grid; grid-template-columns: 170px 1fr 120px; gap: 10px; align-items: center; margin: 6px 0; font-size: 13px; }
+  .an-bar span.t { height: 10px; background: var(--darkened-bg); border-radius: 5px; overflow: hidden; }
+  .an-bar span.t i { display: block; height: 100%; background: #d91f26; }
+  .an-bar em { font-style: normal; text-align: right; }
+  .an table { width: 100%; }
+  .an .low { color: #b45309; font-weight: 700; }
+  @media (max-width: 900px) { .an-two { grid-template-columns: 1fr; } .an-bar { grid-template-columns: 110px 1fr 90px; } }
+</style>
+{% endblock %}
+{% block content %}
+<div class="an">
+  <div class="an-periods">
+    {% for d, label in periods %}<a href="?days={{ d }}" class="{% if d == days %}on{% endif %}">{{ label }}</a>{% endfor %}
+    <a href="/api/analytics/summary/?days={{ days }}" style="float:right">JSON (API)</a>
+  </div>
+
+  <div class="an-kpis">
+    <div class="an-kpi"><small>Revenue</small><b>{{ r.revenue|floatformat:0|intcomma }} ₸</b></div>
+    <div class="an-kpi"><small>Orders (not cancelled)</small><b>{{ r.orders }}</b></div>
+    <div class="an-kpi"><small>Average order</small><b>{{ r.average_order|floatformat:0|intcomma }} ₸</b></div>
+    <div class="an-kpi"><small>Parts sold</small><b>{{ r.items_sold }}</b></div>
+    <div class="an-kpi"><small>Cancelled</small><b>{{ r.cancelled }}</b></div>
+    <div class="an-kpi"><small>New customers</small><b>{{ r.new_customers }}</b></div>
+  </div>
+
+  <div class="an-box">
+    <h2>Revenue per day</h2>
+    <div class="an-chart">{% for d in r.daily %}<i style="height: {{ d.pct }}%" title="{{ d.date }}: {{ d.revenue|floatformat:0|intcomma }} ₸ · {{ d.orders }} orders"></i>{% endfor %}</div>
+    <div class="an-axis"><span>{{ first_day }}</span><span>{{ last_day }}</span></div>
+  </div>
+
+  <div class="an-two">
+    <div class="an-box">
+      <h2>Top parts</h2>
+      <table><thead><tr><th>Part</th><th>Sold</th><th>Revenue</th></tr></thead><tbody>
+        {% for p in r.top_products %}<tr><td><a href="{% url 'admin:catalog_product_change' p.id %}">{{ p.sku }}</a> {{ p.name_en }}</td><td>{{ p.quantity }}</td><td>{{ p.revenue|floatformat:0|intcomma }} ₸</td></tr>
+        {% empty %}<tr><td colspan="3">No sales in this period.</td></tr>{% endfor %}
+      </tbody></table>
+    </div>
+    <div class="an-box">
+      <h2>Revenue by category</h2>
+      {% for c in r.by_category %}<div class="an-bar"><span>{{ c.name_en }}</span><span class="t"><i style="width: {{ c.pct }}%"></i></span><em>{{ c.revenue|floatformat:0|intcomma }} ₸</em></div>
+      {% empty %}<p>No sales in this period.</p>{% endfor %}
+    </div>
+  </div>
+
+  <div class="an-two">
+    <div class="an-box">
+      <h2>Orders by status</h2>
+      <table><tbody>{% for s in statuses %}<tr><td><a href="{% url 'admin:orders_order_changelist' %}?status__exact={{ s.key }}">{{ s.label }}</a></td><td>{{ s.n }}</td></tr>{% endfor %}</tbody></table>
+      <h2 style="margin-top:16px">Payment</h2>
+      <table><tbody>{% for p in payments %}<tr><td>{{ p.label }}</td><td>{{ p.orders }} orders</td><td>{{ p.revenue|floatformat:0|intcomma }} ₸</td></tr>{% empty %}<tr><td>—</td></tr>{% endfor %}</tbody></table>
+      <h2 style="margin-top:16px">Delivery</h2>
+      <table><tbody>{% for p in deliveries %}<tr><td>{{ p.label }}</td><td>{{ p.orders }} orders</td><td>{{ p.revenue|floatformat:0|intcomma }} ₸</td></tr>{% empty %}<tr><td>—</td></tr>{% endfor %}</tbody></table>
+    </div>
+    <div class="an-box">
+      <h2>Low stock (≤ {{ low_limit }}) — order more</h2>
+      <table><tbody>{% for p in r.low_stock %}<tr><td><a href="{% url 'admin:catalog_product_change' p.id %}">{{ p.sku }}</a> {{ p.name_en }}</td><td class="low">{{ p.stock }}</td></tr>
+        {% empty %}<tr><td>Everything is in stock.</td></tr>{% endfor %}</tbody></table>
+    </div>
+  </div>
+</div>
+{% endblock %}

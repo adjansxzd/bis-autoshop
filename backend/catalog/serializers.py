@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils.translation import gettext as _
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
@@ -49,7 +50,7 @@ class ProductSerializer(serializers.ModelSerializer):
         model = Product
         fields = [
             "id", "sku", "name_en", "name_ru", "description_en", "description_ru",
-            "price", "stock", "in_stock", "image", "image_url", "oem_numbers", "specs",
+            "price", "stock", "in_stock", "image", "image_url", "model_3d", "oem_numbers", "specs",
             "rating_avg", "rating_count", "is_active",
             "category", "brand", "compatible_cars",
             "category_id", "brand_id", "compatible_car_ids",
@@ -77,7 +78,7 @@ class ProductSerializer(serializers.ModelSerializer):
 
     def validate_price(self, value):
         if value <= 0:
-            raise serializers.ValidationError("Price must be greater than 0.")
+            raise serializers.ValidationError(_("Price must be greater than 0."))
         return value
 
 
@@ -105,5 +106,5 @@ class ReviewSerializer(serializers.ModelSerializer):
 
     def validate_rating(self, value):
         if not 1 <= value <= 5:
-            raise serializers.ValidationError("Rating must be from 1 to 5.")
+            raise serializers.ValidationError(_("Rating must be from 1 to 5."))
         return value

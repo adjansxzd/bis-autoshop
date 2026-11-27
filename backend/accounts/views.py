@@ -1,12 +1,37 @@
+from django.conf import settings
+from rest_framework import exceptions as drf_exceptions
 from rest_framework import generics, mixins, permissions, status, viewsets
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenObtainPairView
 from drf_spectacular.utils import extend_schema, inline_serializer
 from rest_framework import serializers
 
+from . import google
 from .models import GarageCar
 from .serializers import GarageCarSerializer, PasswordChangeSerializer, RegisterSerializer, UserSerializer
+
+
+class LoginView(TokenObtainPairView):
+    """POST /api/auth/login/ {username, password} → JWT tokens. At most 10 attempts per minute per IP."""
+
+    throttle_scope = "auth"
+
+
+class LogoutView(generics.GenericAPIView):
+    """POST /api/auth/logout/ {refresh} — sign out: the refresh token is blacklisted and can't be used again."""
+
+    permission_classes = [permissions.AllowAny]
+
+    @extend_schema(request=inline_serializer("Logout", {"refresh": serializers.CharField()}), responses={205: None})
+    def post(self, request):
+        try:
+            RefreshToken(request.data.get("refresh", "")).blacklist()
+        except TokenError:
+            pass  # already expired / blacklisted: the user is signed out anyway
+        return Response(status=status.HTTP_205_RESET_CONTENT)
 
 
 class RegisterView(generics.CreateAPIView):
@@ -14,6 +39,7 @@ class RegisterView(generics.CreateAPIView):
 
     serializer_class = RegisterSerializer
     permission_classes = [permissions.AllowAny]
+    throttle_scope = "auth"
 
     @extend_schema(responses=inline_serializer("RegisterResult", {
         "user": UserSerializer(), "access": serializers.CharField(), "refresh": serializers.CharField(),
@@ -27,6 +53,39 @@ class RegisterView(generics.CreateAPIView):
             {"user": UserSerializer(user).data, "access": str(refresh.access_token), "refresh": str(refresh)},
             status=status.HTTP_201_CREATED,
         )
+
+
+class GoogleConfigView(generics.GenericAPIView):
+    """GET /api/auth/google/config/ — the Google OAuth client ID ("" = Google sign-in is off)."""
+
+    permission_classes = [permissions.AllowAny]
+
+    @extend_schema(responses=inline_serializer("GoogleConfig", {"client_id": serializers.CharField()}))
+    def get(self, request):
+        return Response({"client_id": settings.GOOGLE_CLIENT_ID})
+
+
+class GoogleLoginView(generics.GenericAPIView):
+    """POST /api/auth/google/ {credential} — sign in (or sign up) with a Google ID token; returns JWT tokens."""
+
+    permission_classes = [permissions.AllowAny]
+    throttle_scope = "auth"
+
+    @extend_schema(
+        request=inline_serializer("GoogleLogin", {"credential": serializers.CharField()}),
+        responses=inline_serializer("GoogleLoginResult", {
+            "user": UserSerializer(), "access": serializers.CharField(), "refresh": serializers.CharField(),
+            "created": serializers.BooleanField(),
+        }),
+    )
+    def post(self, request):
+        credential = request.data.get("credential", "")
+        if not isinstance(credential, str) or not credential:
+            raise drf_exceptions.ValidationError({"credential": "This field is required."})
+        user, created = google.user_for(google.verify(credential))
+        refresh = RefreshToken.for_user(user)
+        return Response({"user": UserSerializer(user).data, "access": str(refresh.access_token),
+                         "refresh": str(refresh), "created": created})
 
 
 class MeView(generics.RetrieveUpdateAPIView):

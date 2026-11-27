@@ -1,6 +1,20 @@
 from django.conf import settings
-from django.core.validators import MaxValueValidator, MinValueValidator
+from django.core.validators import FileExtensionValidator, MaxValueValidator, MinValueValidator
+from django.core.exceptions import ValidationError
 from django.db import models
+
+
+MAX_MODEL_SIZE = 10 * 1024 * 1024
+
+
+def validate_glb(file):
+    """A .glb file must really be binary glTF (starts with 'glTF') and be at most 10 MB."""
+    if file.size > MAX_MODEL_SIZE:
+        raise ValidationError("The 3D model is larger than 10 MB.")
+    head = file.read(4)
+    file.seek(0)
+    if head != b"glTF":
+        raise ValidationError("This is not a binary glTF (.glb) file.")
 
 
 class Category(models.Model):
@@ -66,6 +80,11 @@ class Product(models.Model):
     stock = models.PositiveIntegerField(default=0)
     image_url = models.URLField(blank=True)
     image = models.ImageField(upload_to="products/", blank=True, help_text="Product photo (JPG/PNG/WebP)")
+    model_3d = models.FileField(
+        "3D model", upload_to="models3d/", blank=True,
+        validators=[FileExtensionValidator(["glb"]), validate_glb],
+        help_text="Optional 3D model (.glb, up to 10 MB). Shown as a '3D' tab on the product page.",
+    )
     oem_numbers = models.CharField(
         max_length=255, blank=True, help_text="Original manufacturer part numbers, comma-separated (searchable)"
     )

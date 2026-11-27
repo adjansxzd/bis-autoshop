@@ -422,6 +422,32 @@ class OrderProcessTests(APITestCase):
         self.assertEqual([e["status"] for e in paid["events"]], ["new", "paid"])
         self.assertEqual(self.client.post(f"/api/orders/{order['id']}/pay/").status_code, 400)  # no double payment
 
+    def test_kaspi_qr_payment_and_refund_note(self):
+        self.login()
+        order = self.checkout(payment_method="kaspi").data
+        self.assertTrue(order["can_pay"])
+        paid = self.client.post(f"/api/orders/{order['id']}/pay/").data
+        self.assertEqual(paid["status"], "paid")
+        self.assertIn("Kaspi", paid["events"][-1]["note"])
+        cancelled = self.client.post(f"/api/orders/{order['id']}/cancel/").data
+        self.assertIn("refund", cancelled["events"][-1]["note"])
+
+    def test_error_messages_follow_the_site_language(self):
+        self.login()
+        product = Product.objects.get(sku="BR-003")
+        ru = self.client.post("/api/cart/items/", {"product_id": product.id, "quantity": 999}, HTTP_ACCEPT_LANGUAGE="ru")
+        self.assertIn("В наличии только", str(ru.data["quantity"]))
+        en = self.client.post("/api/cart/items/", {"product_id": product.id, "quantity": 999}, HTTP_ACCEPT_LANGUAGE="en")
+        self.assertIn("Only", str(en.data["quantity"]))
+
+    def test_rejected_add_leaves_no_empty_cart_line(self):
+        """Regression: asking for more than in stock used to leave a 0-quantity line that broke checkout."""
+        self.login()
+        product = Product.objects.get(sku="BR-003")
+        self.assertEqual(self.client.post("/api/cart/items/", {"product_id": product.id, "quantity": 999}).status_code, 400)
+        self.assertEqual(self.client.get("/api/cart/").data["items"], [])
+        self.assertEqual(self.checkout("BR-001", 1).status_code, 201)
+
     def test_cash_order_cannot_be_paid_online(self):
         self.login()
         order = self.checkout(payment_method="cash").data

@@ -9,6 +9,7 @@ import { OrdersPage } from './pages/orders/orders';
 import { RegisterPage } from './pages/register/register';
 import { ProductDetail } from './pages/product-detail/product-detail';
 import { Search } from './pages/search/search';
+import { NotFoundPage } from './pages/not-found/not-found';
 
 export const routes: Routes = [
   { path: '', component: Catalog, title: 'AutoShop — Auto parts' },
@@ -20,5 +21,5 @@ export const routes: Routes = [
   { path: 'login', component: LoginPage, title: 'AutoShop — Sign in' },
   { path: 'register', component: RegisterPage, title: 'AutoShop — Create account' },
   { path: 'account', component: AccountPage, title: 'AutoShop — My account' },
-  { path: '**', redirectTo: '' },
+  { path: '**', component: NotFoundPage, title: 'AutoShop — Page not found' },
 ];

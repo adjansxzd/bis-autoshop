@@ -5,3 +5,5 @@ django-cors-headers>=4.4
 django-filter>=24.0
 drf-spectacular>=0.27
 Pillow>=10.0
+google-auth>=2.30
+requests>=2.31

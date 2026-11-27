@@ -1,0 +1,93 @@
+#
+msgid ""
+msgstr ""
+"Language: ru\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Plural-Forms: nplurals=4; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<12 || n%100>14) ? 1 : n%10==0 || (n%10>=5 && n%10<=9) || (n%100>=11 && n%100<=14)? 2 : 3);\n"
+
+msgid "Enter a valid phone number, e.g. +7 700 123 45 67."
+msgstr "Введите корректный номер телефона, например +7 700 123 45 67."
+
+msgid "This email is already used by another account."
+msgstr "Этот email уже используется другим аккаунтом."
+
+msgid "An account with this email already exists."
+msgstr "Аккаунт с таким email уже существует."
+
+msgid "Passwords do not match."
+msgstr "Пароли не совпадают."
+
+msgid "Current password is wrong."
+msgstr "Текущий пароль указан неверно."
+
+msgid "This car is already in your garage."
+msgstr "Этот автомобиль уже есть в вашем гараже."
+
+msgid "{car} exists for {start}–{end}."
+msgstr "{car} выпускался в {start}–{end} гг."
+
+msgid "Price must be greater than 0."
+msgstr "Цена должна быть больше 0."
+
+msgid "Rating must be from 1 to 5."
+msgstr "Оценка должна быть от 1 до 5."
+
+msgid "You have already reviewed this product. Edit your review instead."
+msgstr "Вы уже оставили отзыв на этот товар. Отредактируйте его."
+
+msgid "Quantity must be at least 1."
+msgstr "Количество должно быть не меньше 1."
+
+msgid "This product is out of stock."
+msgstr "Этого товара нет в наличии."
+
+msgid "Only {available} in stock."
+msgstr "В наличии только {available} шт."
+
+msgid "Enter the delivery address."
+msgstr "Укажите адрес доставки."
+
+msgid "A cancelled order cannot be reopened."
+msgstr "Отменённый заказ нельзя возобновить."
+
+msgid "An order in status '{current}' cannot be cancelled."
+msgstr "Заказ в статусе «{current}» нельзя отменить."
+
+msgid "Order status cannot go back from '{current}' to '{new}'."
+msgstr "Статус заказа нельзя вернуть с «{current}» на «{new}»."
+
+msgid "This order is paid on delivery."
+msgstr "Этот заказ оплачивается при получении."
+
+msgid "Only a new, unpaid order can be paid."
+msgstr "Оплатить можно только новый неоплаченный заказ."
+
+msgid "You can cancel only your own order."
+msgstr "Отменить можно только свой заказ."
+
+msgid "You can pay only for your own order."
+msgstr "Оплатить можно только свой заказ."
+
+msgid "Cart is empty."
+msgstr "Корзина пуста."
+
+msgid "You can reorder only your own order."
+msgstr "Повторить можно только свой заказ."
+
+msgid "Signing in with Google is not set up on this server."
+msgstr "Вход через Google не настроен на этом сервере."
+
+msgid "Google sign-in failed. Please try again."
+msgstr "Не удалось войти через Google. Попробуйте ещё раз."
+
+msgid "This Google account has no confirmed email."
+msgstr "У этого аккаунта Google нет подтверждённого email."
+
+msgid "This account is blocked."
+msgstr "Этот аккаунт заблокирован."
+
+msgid "No active account found with the given credentials"
+msgstr "Неверное имя пользователя или пароль"
+
+msgid "Given token not valid for any token type"
+msgstr "Сессия истекла, войдите снова"

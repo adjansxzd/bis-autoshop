@@ -53,9 +53,13 @@
   .as-brand b { color: #ff5a5f; }
   .as-brand small { font-weight: 500; font-size: 13px; color: #9aa3ae; margin-left: 2px; }
   .as-mark { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; background: #d91f26; color: #fff; }
+  .as-analytics { color: #fff !important; font-weight: 600; margin-left: 24px; padding: 6px 12px; border-radius: 8px; background: rgba(255,255,255,.08); }
+  .as-analytics:hover { background: rgba(255,255,255,.16); }
   #changelist input[name$="-price"] { width: 7em; }
   #changelist input[name$="-stock"] { width: 4em; }
 </style>
 {% endblock %}
 
-{% block nav-global %}{% endblock %}
+{% block nav-global %}
+{% if user.is_staff %}<a class="as-analytics" href="{% url 'admin-analytics' %}">📊 Sales analytics</a>{% endif %}
+{% endblock %}

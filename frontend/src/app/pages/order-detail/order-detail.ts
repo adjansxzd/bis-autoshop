@@ -1,4 +1,5 @@
 import { DatePipe } from '@angular/common';
+import { KaspiQr } from '../../shared/kaspi-qr';
 import { Component, OnInit, computed, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -18,7 +19,7 @@ const STEPS: OrderStatus[] = ['new', 'paid', 'shipped', 'delivered'];
  */
 @Component({
   selector: 'app-order-detail',
-  imports: [RouterLink, FormsModule, DatePipe, TPipe, KztPipe],
+  imports: [RouterLink, FormsModule, DatePipe, TPipe, KztPipe, KaspiQr],
   templateUrl: './order-detail.html',
   styleUrl: './order-detail.scss',
 })
@@ -71,6 +72,7 @@ export class OrderDetailPage implements OnInit {
     const known: [string, string][] = [
       ['Order placed', 'note.placed'],
       ['Paid online', 'note.paid_online'],
+      ['Paid with Kaspi QR', 'note.paid_kaspi'],
       ['Changed by the shop', 'note.by_shop'],
       ['Changed in the admin panel', 'note.by_shop'],
     ];

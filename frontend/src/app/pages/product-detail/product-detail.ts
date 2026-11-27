@@ -9,7 +9,9 @@ import { I18nService } from '../../core/i18n.service';
 import { Product, ReviewsResponse } from '../../core/models';
 import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
-import { PartIcon } from '../../shared/part-icon';
+import { PartPhoto } from '../../shared/part-photo';
+import { SKU_PHOTOS } from '../../shared/part-photos';
+import { PartModel3d } from '../../shared/part-model-3d';
 import { PhotoPipe } from '../../shared/photo';
 import { Stars } from '../../shared/stars';
 import { QtyStepper } from '../../shared/qty-stepper';
@@ -17,7 +19,7 @@ import { KztPipe, LocPipe, TPipe } from '../../shared/t.pipe';
 
 @Component({
   selector: 'app-product-detail',
-  imports: [RouterLink, FormsModule, DatePipe, PartIcon, QtyStepper, Stars, PhotoPipe, TPipe, LocPipe, KztPipe],
+  imports: [RouterLink, FormsModule, DatePipe, PartPhoto, PartModel3d, PhotoPipe, QtyStepper, Stars, TPipe, LocPipe, KztPipe],
   templateUrl: './product-detail.html',
   styleUrl: './product-detail.scss',
 })
@@ -33,6 +35,9 @@ export class ProductDetail implements OnInit {
   product = signal<Product | null>(null);
   error = signal(false);
   qty = signal(1);
+  /** product picture: photo or rotatable 3D model (when the part has one) */
+  view = signal<'photo' | '3d'>('photo');
+  hasSkuPhoto = (sku: string) => SKU_PHOTOS.has(sku);
   busy = signal(false);
   message = signal('');
   addError = signal('');
@@ -125,14 +130,10 @@ export class ProductDetail implements OnInit {
   add() {
     const p = this.product();
     if (!p) return;
-    if (!this.auth.isLoggedIn()) {
-      this.router.navigate(['/login'], { queryParams: { next: this.router.url } });
-      return;
-    }
     this.busy.set(true);
     this.message.set('');
     this.addError.set('');
-    this.cart.add(p.id, Math.min(this.qty(), this.available())).subscribe({
+    this.cart.add(p, Math.min(this.qty(), this.available())).subscribe({
       next: () => {
         this.busy.set(false);
         this.message.set('ok');

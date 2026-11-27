@@ -5,8 +5,8 @@ import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
 import { CartService, apiError } from '../../core/cart.service';
 import { CartItem, DeliveryOptions } from '../../core/models';
-import { PartIcon } from '../../shared/part-icon';
-import { PhotoPipe } from '../../shared/photo';
+import { GarageService } from '../../core/garage.service';
+import { PartPhoto } from '../../shared/part-photo';
 import { QtyStepper } from '../../shared/qty-stepper';
 import { KztPipe, LocPipe, TPipe } from '../../shared/t.pipe';
 
@@ -18,22 +18,34 @@ import { KztPipe, LocPipe, TPipe } from '../../shared/t.pipe';
  */
 @Component({
   selector: 'app-cart',
-  imports: [FormsModule, RouterLink, PartIcon, PhotoPipe, QtyStepper, TPipe, LocPipe, KztPipe],
+  imports: [FormsModule, RouterLink, PartPhoto, QtyStepper, TPipe, LocPipe, KztPipe],
   templateUrl: './cart.html',
   styleUrl: './cart.scss',
 })
 export class CartPage implements OnInit {
   cart = inject(CartService);
   auth = inject(AuthService);
+  garage = inject(GarageService);
   private router = inject(Router);
 
   // checkout form
   delivery = signal<'courier' | 'pickup'>('courier');
-  payment: 'card' | 'cash' = 'card';
+  payment: 'card' | 'kaspi' | 'cash' = 'kaspi';
   address = '';
   phone = '';
   comment = '';
   options = signal<DeliveryOptions | null>(null);
+
+  /** free-delivery progress bar (0–100 %) */
+  freePct = computed(() => {
+    const o = this.options();
+    return o ? Math.min(100, (this.itemsTotal() / Number(o.free_from)) * 100) : 0;
+  });
+  /** true when every part in the cart fits the selected car */
+  allFit = computed(() => {
+    const items = this.cart.cart()?.items ?? [];
+    return !!this.garage.car() && items.length > 0 && items.every((i) => this.garage.fits(i.product.compatible_cars));
+  });
 
   error = signal('');
   itemErrors = signal<Record<number, string>>({});

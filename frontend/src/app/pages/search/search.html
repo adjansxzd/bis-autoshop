@@ -13,7 +13,7 @@
         <h4>{{ 'search.categories' | t }} <em>{{ r.categories.length }}</em></h4>
         <div class="chips">
           @for (c of r.categories; track c.id) {
-            <a class="chip" routerLink="/" [queryParams]="{}"><app-part-icon [name]="c.icon" [size]="16" /> {{ c | loc: 'name' }}</a>
+            <a class="chip" routerLink="/" [queryParams]="{ category: c.slug }" fragment="parts"><app-part-icon [name]="c.icon" [size]="16" /> {{ c | loc: 'name' }}</a>
           }
         </div>
       </section>

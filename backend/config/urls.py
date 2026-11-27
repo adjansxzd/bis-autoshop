@@ -10,6 +10,8 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from django.views.generic import RedirectView
 
+from analytics.views import admin_page as analytics_page
+
 
 @extend_schema(responses=inline_serializer("Health", {"status": serializers.CharField(), "service": serializers.CharField()}))
 @api_view(["GET"])
@@ -21,11 +23,13 @@ def health(request):
 
 urlpatterns = [
     path("", RedirectView.as_view(url="/api/docs/", permanent=False)),
+    path("admin/analytics/", admin.site.admin_view(analytics_page), name="admin-analytics"),  # staff only
     path("admin/", admin.site.urls),
     path("api/health/", health),
     path("api/auth/", include("accounts.urls")),
     path("api/", include("catalog.urls")),
     path("api/", include("orders.urls")),
+    path("api/", include("analytics.urls")),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger"),
 ]

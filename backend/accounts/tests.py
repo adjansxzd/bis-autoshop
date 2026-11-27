@@ -1,7 +1,10 @@
 """Admin panel and role-based access tests. Run: python manage.py test"""
+from unittest import mock
+
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.test import TestCase
+from rest_framework.test import APITestCase
 
 from catalog.models import Product
 from orders.models import Order
@@ -203,3 +206,86 @@ class AccountTests(TestCase):
         res = self.client.post("/api/auth/refresh/", {"refresh": refresh}, content_type="application/json")
         self.assertEqual(res.status_code, 200)
         self.assertEqual(self.client.get("/api/auth/me/", **self.auth(res.json()["access"])).status_code, 200)
+
+
+class GoogleSignInTests(APITestCase):
+    """Sign in with Google: the ID token is checked by google-auth (mocked here), then the user is found or created."""
+
+    CLAIMS = {"email": "Aidana.B@gmail.com", "email_verified": True, "given_name": "Aidana", "family_name": "B"}
+
+    def test_off_when_no_client_id(self):
+        with self.settings(GOOGLE_CLIENT_ID=""):
+            self.assertEqual(self.client.get("/api/auth/google/config/").data["client_id"], "")
+            self.assertEqual(self.client.post("/api/auth/google/", {"credential": "x"}).status_code, 400)
+
+    def test_new_google_user_becomes_customer_and_gets_tokens(self):
+        with self.settings(GOOGLE_CLIENT_ID="test-client"), \
+                mock.patch("accounts.google.id_token.verify_oauth2_token", return_value=self.CLAIMS) as verify:
+            res = self.client.post("/api/auth/google/", {"credential": "token"})
+        self.assertEqual(res.status_code, 200, res.data)
+        self.assertTrue(res.data["created"])
+        self.assertEqual(verify.call_args.args[2], "test-client")  # audience = our client ID
+        user = User.objects.get(email="aidana.b@gmail.com")
+        self.assertEqual(user.role, "customer")
+        self.assertFalse(user.has_usable_password())
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {res.data['access']}")
+        self.assertEqual(self.client.get("/api/auth/me/").data["first_name"], "Aidana")
+
+    def test_existing_email_signs_in_same_account(self):
+        existing = User.objects.create_user("aidana", "aidana.b@gmail.com", "Strong!pass77")
+        with self.settings(GOOGLE_CLIENT_ID="test-client"), \
+                mock.patch("accounts.google.id_token.verify_oauth2_token", return_value=self.CLAIMS):
+            res = self.client.post("/api/auth/google/", {"credential": "token"})
+        self.assertFalse(res.data["created"])
+        self.assertEqual(res.data["user"]["id"], existing.id)
+
+    def test_invalid_token_is_rejected(self):
+        with self.settings(GOOGLE_CLIENT_ID="test-client"), \
+                mock.patch("accounts.google.id_token.verify_oauth2_token", side_effect=ValueError("bad")):
+            self.assertEqual(self.client.post("/api/auth/google/", {"credential": "forged"}).status_code, 400)
+        self.assertFalse(User.objects.filter(email__iexact="aidana.b@gmail.com").exists())
+
+
+class SecurityTests(APITestCase):
+    """Architecture & Security: brute-force limit, sign-out blacklists the token, refresh tokens rotate, security headers."""
+
+    @classmethod
+    def setUpTestData(cls):
+        User.objects.create_user("sec", "sec@test.kz", "Strong!pass77")
+
+    def test_login_is_rate_limited(self):
+        from django.core.cache import cache
+        from rest_framework.throttling import ScopedRateThrottle
+        cache.clear()
+        with mock.patch.dict(ScopedRateThrottle.THROTTLE_RATES, {"auth": "3/min"}):
+            codes = [self.client.post("/api/auth/login/", {"username": "sec", "password": "wrong"}).status_code for _ in range(4)]
+        cache.clear()
+        self.assertEqual(codes, [401, 401, 401, 429])
+
+    def test_logout_blacklists_refresh_token(self):
+        tokens = self.client.post("/api/auth/login/", {"username": "sec", "password": "Strong!pass77"}).data
+        self.assertEqual(self.client.post("/api/auth/logout/", {"refresh": tokens["refresh"]}).status_code, 205)
+        self.assertEqual(self.client.post("/api/auth/refresh/", {"refresh": tokens["refresh"]}).status_code, 401)
+
+    def test_refresh_token_rotates_and_old_one_dies(self):
+        tokens = self.client.post("/api/auth/login/", {"username": "sec", "password": "Strong!pass77"}).data
+        new = self.client.post("/api/auth/refresh/", {"refresh": tokens["refresh"]}).data
+        self.assertIn("refresh", new)
+        self.assertNotEqual(new["refresh"], tokens["refresh"])
+        self.assertEqual(self.client.post("/api/auth/refresh/", {"refresh": tokens["refresh"]}).status_code, 401)
+
+    def test_security_headers(self):
+        res = self.client.get("/api/health/")
+        self.assertEqual(res["X-Content-Type-Options"], "nosniff")
+        self.assertEqual(res["X-Frame-Options"], "DENY")
+        self.assertEqual(res["Referrer-Policy"], "same-origin")
+
+    def test_blocked_user_cannot_sign_in(self):
+        User.objects.filter(username="sec").update(is_active=False)
+        self.assertEqual(self.client.post("/api/auth/login/", {"username": "sec", "password": "Strong!pass77"}).status_code, 401)
+
+    def test_customer_cannot_change_own_role(self):
+        tokens = self.client.post("/api/auth/login/", {"username": "sec", "password": "Strong!pass77"}).data
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {tokens['access']}")
+        self.client.patch("/api/auth/me/", {"role": "admin"}, format="json")
+        self.assertEqual(User.objects.get(username="sec").role, "customer")

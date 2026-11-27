@@ -5,49 +5,42 @@ import { AuthService } from '../../core/auth.service';
 import { CartService, apiError } from '../../core/cart.service';
 import { GarageService } from '../../core/garage.service';
 import { Product } from '../../core/models';
-import { PartIcon } from '../../shared/part-icon';
-import { PhotoPipe } from '../../shared/photo';
+import { PartPhoto } from '../../shared/part-photo';
 import { Stars } from '../../shared/stars';
 import { KztPipe, LocPipe, TPipe } from '../../shared/t.pipe';
 
 @Component({
   selector: 'app-product-card',
-  imports: [RouterLink, PartIcon, Stars, PhotoPipe, TPipe, LocPipe, KztPipe],
+  imports: [RouterLink, PartPhoto, Stars, TPipe, LocPipe, KztPipe],
   template: `
     @let p = product();
-    <article class="card pc">
-      <a class="visual" [routerLink]="['/product', p.id]">
-        @if (p.image) {
-          <img [src]="p.image | photo" [alt]="p | loc: 'name'" loading="lazy" />
-        } @else {
-          <span class="ic"><app-part-icon [name]="p.category.icon" [size]="40" /></span>
-        }
-        @if (garage.car()) {
-          <span class="fit" [class.no]="!fits()">
-            {{ fits() ? '✓ ' + ('product.fits_yours' | t) + ' ' + garage.car()!.model : ('product.not_fit' | t) + ' ' + garage.car()!.model }}
-          </span>
-        }
+    <article class="pc">
+      <a class="visual" [routerLink]="['/product', p.id]" tabindex="-1">
+        <app-part-photo [product]="p" [alt]="p | loc: 'name'" />
+        @if (p.model_3d) { <span class="b3d" [title]="'model3d.has' | t">3D</span> }
       </a>
       <div class="body">
-        <div class="meta"><span>{{ p.brand.name }}</span><span class="mono">{{ p.sku }}</span></div>
+        <div class="meta">{{ p.brand.name }}&nbsp;&nbsp;/&nbsp;&nbsp;{{ p.sku }}</div>
         <a class="name" [routerLink]="['/product', p.id]">{{ p | loc: 'name' }}</a>
         @if (p.rating_count) {
-          <div class="rating"><app-stars [value]="p.rating_avg ?? 0" [size]="13" /> <b>{{ p.rating_avg }}</b> <span>({{ p.rating_count }})</span></div>
+          <div class="rating"><app-stars [value]="p.rating_avg ?? 0" [size]="13" /> <span>{{ p.rating_avg }} ({{ p.rating_count }})</span></div>
+        }
+        <!-- fitment line only when the list is not already filtered by the car -->
+        @if (garage.car() && showFit()) {
+          <div class="fit" [class.no]="!fits()">{{ fits() ? '✓ ' + ('product.fits_yours' | t) : ('product.not_fit' | t) }} {{ garage.car()!.model }}</div>
         }
         <div class="stock" [class.out]="!p.in_stock" [class.low]="p.in_stock && p.stock <= 5">
           @if (!p.in_stock) { {{ 'product.out_of_stock' | t }} }
-          @else if (p.stock <= 5) { {{ p.stock }} {{ 'product.left' | t }} }
+          @else if (p.stock <= 5) { {{ 'product.only' | t }} {{ p.stock }} {{ 'product.left' | t }} }
           @else { {{ 'product.in_stock' | t }} }
         </div>
         <div class="foot">
           <span class="price">{{ p.price | kzt }}</span>
           <button type="button" class="btn add" [disabled]="!p.in_stock || maxed() || busy()" (click)="add()"
-                  [title]="maxed() ? ('product.max_reached' | t) : ('product.add' | t)" [attr.aria-label]="'product.add' | t">
-            @if (justAdded()) {
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg>
-            } @else {
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.5L21 8H6.2"/><path d="M14 4v6M11 7h6"/></svg>
-            }
+                  [title]="maxed() ? ('product.max_reached' | t) : ''">
+            @if (justAdded()) { ✓ {{ 'product.added_short' | t }} }
+            @else if (!p.in_stock) { {{ 'product.sold_out' | t }} }
+            @else { {{ 'product.add' | t }} }
           </button>
         </div>
         @if (error()) { <div class="error-text">{{ error() }}</div> }
@@ -55,23 +48,20 @@ import { KztPipe, LocPipe, TPipe } from '../../shared/t.pipe';
     </article>
   `,
   styles: `
-    .pc { display: flex; flex-direction: column; height: 100%; overflow: hidden; transition: transform .15s, box-shadow .15s;
-      &:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(16,24,40,.12); } }
-    .visual { position: relative; display: grid; place-items: center; aspect-ratio: 16 / 9;
-      background: linear-gradient(180deg, var(--panel-2), var(--panel)); border-bottom: 1px solid var(--line); }
-    .visual img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-    .rating { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); b { color: var(--text); } }
-    .ic { display: grid; place-items: center; width: 76px; height: 76px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); }
-    .fit { z-index: 1; position: absolute; left: 10px; top: 10px; right: 10px; width: fit-content; font-size: 12px; font-weight: 700;
-      padding: 4px 9px; border-radius: 999px; background: var(--ok-soft); color: var(--ok);
-      &.no { background: var(--panel); color: var(--muted); border: 1px solid var(--line); } }
-    .body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
-    .meta { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--muted); font-weight: 600; .mono { font-size: 11px; } }
-    .name { font-weight: 700; line-height: 1.3; text-decoration: none; color: var(--text); &:hover { color: var(--accent); } }
-    .stock { font-size: 13px; font-weight: 600; color: var(--ok); &.low { color: var(--warn); } &.out { color: var(--danger); } }
-    .foot { margin-top: auto; padding-top: 8px; display: flex; justify-content: space-between; align-items: center; }
-    .price { font-size: 20px; font-weight: 800; letter-spacing: -0.02em; }
-    .add { width: 44px; height: 40px; padding: 0; }
+    /* Figma: "Product card" component */
+    .pc { display: flex; flex-direction: column; height: 100%; padding: 10px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+      transition: box-shadow .15s, border-color .15s; &:hover { box-shadow: var(--shadow-hover); } }
+    .visual { position: relative; display: grid; place-items: center; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--panel-2); }
+    .body { padding: 12px 4px 2px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+    .b3d { position: absolute; top: 8px; right: 8px; padding: 3px 7px; border-radius: 6px; background: var(--text); color: var(--panel); font-size: 11px; font-weight: 700; letter-spacing: .04em; }
+    .meta { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .name { font-size: 15px; font-weight: 600; line-height: 1.35; text-decoration: none; color: var(--text); &:hover { color: var(--accent); } }
+    .rating { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--warn); &.none { color: var(--muted); font-size: 12px; } }
+    .fit { font-size: 12px; font-weight: 500; color: var(--ok); &.no { color: var(--muted); } }
+    .stock { font-size: 12px; font-weight: 500; color: var(--ok); &.low { color: var(--warn); } &.out { color: var(--danger); } }
+    .foot { margin-top: auto; padding-top: 10px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+    .price { font-size: 19px; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; }
+    .add { min-height: 40px; padding: 0 14px; font-size: 13px; }
   `,
 })
 export class ProductCard {
@@ -81,6 +71,8 @@ export class ProductCard {
   garage = inject(GarageService);
 
   product = input.required<Product>();
+  /** false when the catalog is already filtered by the selected car (then every card would say "fits") */
+  showFit = input(true);
   busy = signal(false);
   justAdded = signal(false);
   error = signal('');
@@ -90,13 +82,9 @@ export class ProductCard {
   maxed = computed(() => this.cart.inCart(this.product().id) >= this.product().stock);
 
   add() {
-    if (!this.auth.isLoggedIn()) {
-      this.router.navigate(['/login'], { queryParams: { next: this.router.url } });
-      return;
-    }
     this.busy.set(true);
     this.error.set('');
-    this.cart.add(this.product().id, 1).subscribe({
+    this.cart.add(this.product(), 1).subscribe({
       next: () => {
         this.busy.set(false);
         this.justAdded.set(true);

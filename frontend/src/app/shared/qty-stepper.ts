@@ -14,14 +14,15 @@ import { Component, input, output } from '@angular/core';
     </div>
   `,
   styles: `
+    /* Figma: "Quantity stepper" */
     .stepper {
-      display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--panel);
-      button { width: 38px; height: 40px; border: 0; background: none; color: var(--text); font-size: 18px; cursor: pointer;
-        &:hover:not(:disabled) { background: var(--panel-2); } &:disabled { opacity: .3; cursor: default; } }
-      input { width: 46px; height: 40px; border: 0; border-left: 1px solid var(--line); border-right: 1px solid var(--line);
-        text-align: center; font: inherit; font-weight: 700; background: none; color: var(--text); outline: none; -moz-appearance: textfield;
+      display: inline-flex; align-items: center; border-radius: var(--radius); background: var(--panel-2); padding: 0 4px;
+      button { width: 40px; height: 48px; border: 0; background: none; color: var(--text); font-size: 18px; font-weight: 600; cursor: pointer; border-radius: 8px;
+        &:hover:not(:disabled) { color: var(--accent); } &:disabled { opacity: .3; cursor: default; } }
+      input { width: 44px; height: 48px; min-height: 0; padding: 0; border: 0; text-align: center; font: inherit; font-size: 14px; font-weight: 600; background: none; color: var(--text);
+        outline: none; box-shadow: none !important; -moz-appearance: textfield;
         &::-webkit-outer-spin-button, &::-webkit-inner-spin-button { -webkit-appearance: none; } }
-      &.small { button { width: 30px; height: 32px; } input { width: 38px; height: 32px; } }
+      &.small { button { width: 32px; height: 36px; } input { width: 34px; height: 36px; } }
     }
   `,
 })

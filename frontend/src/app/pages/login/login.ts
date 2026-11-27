@@ -4,11 +4,12 @@ import { Router, RouterLink } from '@angular/router';
 
 import { AuthService } from '../../core/auth.service';
 import { TPipe } from '../../shared/t.pipe';
+import { GoogleButton } from '../../components/google-button/google-button';
 
 /** Simple sign-in form (POST /api/auth/login/). Needed so the cart and orders can be used. */
 @Component({
   selector: 'app-login',
-  imports: [FormsModule, RouterLink, TPipe],
+  imports: [FormsModule, RouterLink, TPipe, GoogleButton],
   template: `
     <div class="container wrap">
       <form class="card box" (ngSubmit)="submit()">
@@ -17,6 +18,7 @@ import { TPipe } from '../../shared/t.pipe';
         <label>{{ 'login.password' | t }}<input type="password" name="p" [(ngModel)]="password" required autocomplete="current-password" /></label>
         @if (error()) { <div class="error-text">{{ 'login.error' | t }}</div> }
         <button class="btn block" type="submit" [disabled]="busy() || !username || !password">{{ 'login.submit' | t }}</button>
+        <app-google-button [next]="next()" />
         <p class="alt">{{ 'login.no_account' | t }} <a routerLink="/register" [queryParams]="{ next: next() }">{{ 'login.create' | t }}</a></p>
         <p class="demo">{{ 'login.demo' | t }}: <code>customer</code> / <code>demo12345</code></p>
       </form>

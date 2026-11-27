@@ -29,6 +29,7 @@ from .seed_data import (
 # They are copied into media/ once. Photos uploaded in the admin panel are never overwritten.
 SEED_IMAGES = Path(__file__).resolve().parents[2] / "seed_images"
 IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".webp")
+SEED_MODELS = Path(__file__).resolve().parents[2] / "seed_models"  # <SKU>.glb 3D models
 
 DEMO_USERS = [
     ("admin", "admin@autoshop.local", "admin", True),
@@ -92,6 +93,7 @@ class Command(BaseCommand):
             })
             p.compatible_cars.set([cars[key] for key in fits])
             images_added += self.attach_image(p)
+            self.attach_model(p)
             # Opening stock only for products with no journal entries and no balance yet
             # (an old DB may already hold balances created before the journal existed).
             if (
@@ -154,6 +156,14 @@ class Command(BaseCommand):
                     product.image.save(path.name, File(fh), save=True)
                 return 1
         return 0
+
+    def attach_model(self, product):
+        """Copy seed_models/<SKU>.glb (3D model, see docs/PHOTO_CREDITS.md) if the product has none yet."""
+        path = SEED_MODELS / f"{product.sku}.glb"
+        if product.model_3d or not path.exists():
+            return
+        with path.open("rb") as fh:
+            product.model_3d.save(path.name, File(fh), save=True)
 
     def seed_reviews(self, User):
         """Demo reviewers (customers) and a few reviews, so ratings show up on a fresh database."""

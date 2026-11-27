@@ -1,94 +1,136 @@
 <div class="container wrap">
-  <h1>{{ 'cart.title' | t }}</h1>
+  <h1 class="page-title">{{ 'cart.title' | t }}</h1>
 
-  @if (!auth.isLoggedIn()) {
+  @if (!cart.cart()?.items?.length) {
+    <!-- Figma: 10 Empty cart -->
     <div class="card empty">
-      <p>{{ 'cart.need_login' | t }}</p>
-      <a class="btn" routerLink="/login" [queryParams]="{ next: '/cart' }">{{ 'nav.login' | t }}</a>
-    </div>
-  } @else if (!cart.cart()?.items?.length) {
-    <div class="card empty">
+      <div class="empty-ic" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.5L21 8H6.2"/><circle cx="10" cy="20.5" r="1"/><circle cx="17" cy="20.5" r="1"/></svg>
+      </div>
+      <h2>{{ 'empty.cart_title' | t }}</h2>
       <p>{{ 'cart.empty' | t }}</p>
       <a class="btn" routerLink="/">{{ 'cart.to_catalog' | t }}</a>
     </div>
   } @else {
-    <div class="layout">
-      <ul class="items">
-        @for (item of cart.cart()!.items; track item.id) {
-          <li class="card item">
-            <a class="thumb" [routerLink]="['/product', item.product.id]">
-              @if (item.product.image) { <img [src]="item.product.image | photo" alt="" /> }
-              @else { <app-part-icon [name]="item.product.category.icon" [size]="34" /> }
-            </a>
-            <div class="info">
-              <a class="name" [routerLink]="['/product', item.product.id]">{{ item.product | loc: 'name' }}</a>
-              <div class="meta">{{ item.product.brand.name }} · <span class="mono">{{ item.product.sku }}</span> · {{ item.product.price | kzt }}</div>
-              <div class="limit" [class.max]="item.quantity >= item.product.stock">
-                {{ 'cart.stock_limit' | t }} {{ item.product.stock }} {{ 'product.pcs' | t }}
+    <p class="page-sub">
+      {{ cart.count() }} {{ 'cart.parts' | t }}
+      @if (allFit()) { · {{ 'cart.all_fit' | t }} {{ garage.label() }} }
+    </p>
+
+    <form class="layout" (ngSubmit)="checkout()">
+      <div class="main">
+        <ul class="items">
+          @for (item of cart.cart()!.items; track item.id) {
+            <li class="card item">
+              <a class="thumb" [routerLink]="['/product', item.product.id]">
+                <app-part-photo [product]="item.product" />
+              </a>
+              <div class="info">
+                <div class="meta">{{ item.product.brand.name }} · {{ item.product.sku }}</div>
+                <a class="name" [routerLink]="['/product', item.product.id]">{{ item.product | loc: 'name' }}</a>
+                @if (garage.car()) {
+                  @if (garage.fits(item.product.compatible_cars)) { <div class="fit">✓ {{ 'product.fits_yours' | t }} {{ garage.label() }}</div> }
+                  @else { <div class="fit no">! {{ 'product.not_fit' | t }} {{ garage.label() }}</div> }
+                }
+                <div class="limit" [class.max]="item.quantity >= item.product.stock">
+                  {{ item.product.price | kzt }} · {{ 'cart.stock_limit' | t }} {{ item.product.stock }} {{ 'product.pcs' | t }}
+                </div>
+                <!-- stock limit: the stepper stops at product.stock -->
+                <app-qty-stepper [value]="item.quantity" [max]="item.product.stock" (valueChange)="setQty(item, $event)" />
+                @if (itemErrors()[item.id]) { <div class="error-text">{{ itemErrors()[item.id] }}</div> }
               </div>
-              @if (itemErrors()[item.id]) { <div class="error-text">{{ itemErrors()[item.id] }}</div> }
-            </div>
-            <!-- stock limit: the stepper stops at product.stock -->
-            <app-qty-stepper [value]="item.quantity" [max]="item.product.stock" (valueChange)="setQty(item, $event)" />
-            <div class="sub">{{ item.subtotal | kzt }}</div>
-            <button type="button" class="rm" (click)="remove(item)" [title]="'cart.remove' | t" [attr.aria-label]="'cart.remove' | t">✕</button>
-          </li>
-        }
-      </ul>
-
-      <aside class="card summary">
-        <h3>{{ 'cart.checkout' | t }}</h3>
-        <form (ngSubmit)="checkout()">
-          <!-- 1. delivery -->
-          <div class="group">
-            <span class="glabel">{{ 'co.delivery' | t }}</span>
-            <label class="opt" [class.on]="delivery() === 'courier'">
-              <input type="radio" name="delivery" value="courier" [checked]="delivery() === 'courier'" (change)="delivery.set('courier')" />
-              <span><b>{{ 'co.courier' | t }}</b>
-                <small>{{ options() ? ('co.courier_hint' | t) + ' ' + (options()!.free_from | kzt) : '' }}</small></span>
-              <em>{{ deliveryCostFor('courier') }}</em>
-            </label>
-            <label class="opt" [class.on]="delivery() === 'pickup'">
-              <input type="radio" name="delivery" value="pickup" [checked]="delivery() === 'pickup'" (change)="delivery.set('pickup')" />
-              <span><b>{{ 'co.pickup' | t }}</b><small>{{ options()?.pickup_address }}</small></span>
-              <em>{{ 'co.free' | t }}</em>
-            </label>
-          </div>
-
-          @if (delivery() === 'courier') {
-            <label>{{ 'cart.address' | t }}<input type="text" name="address" [(ngModel)]="address" placeholder="Almaty, Tole bi 59, apt 12" /></label>
+              <div class="side">
+                <button type="button" class="rm" (click)="remove(item)">{{ 'cart.remove' | t }}</button>
+                <div class="sub">{{ item.subtotal | kzt }}</div>
+              </div>
+            </li>
           }
-          <label>{{ 'cart.phone' | t }}<input type="tel" name="phone" [(ngModel)]="phone" placeholder="+7 700 123 45 67" /></label>
+        </ul>
 
-          <!-- 2. payment -->
-          <div class="group">
-            <span class="glabel">{{ 'co.payment' | t }}</span>
-            <label class="opt" [class.on]="payment === 'card'">
-              <input type="radio" name="payment" value="card" [(ngModel)]="payment" />
-              <span><b>{{ 'co.card' | t }}</b><small>{{ 'co.card_hint' | t }}</small></span>
-            </label>
-            <label class="opt" [class.on]="payment === 'cash'">
-              <input type="radio" name="payment" value="cash" [(ngModel)]="payment" />
-              <span><b>{{ 'co.cash' | t }}</b><small>{{ 'co.cash_hint' | t }}</small></span>
-            </label>
+        @if (options(); as o) {
+          @if (delivery() === 'courier') {
+            <div class="progress card" [class.done]="toFree() === 0">
+              <b>{{ toFree() > 0 ? ('co.add' | t) + ' ' + (toFree() | kzt) + ' ' + ('co.for_free' | t) : '✓ ' + ('co.free_unlocked' | t) }}</b>
+              <i><span [style.width.%]="freePct()"></span></i>
+              <small>{{ itemsTotal() | kzt }} {{ 'co.of' | t }} {{ o.free_from | kzt }}</small>
+            </div>
+          }
+        }
+
+        @if (auth.isLoggedIn()) {
+        <!-- 1. delivery -->
+        <h2 class="step">1. {{ 'co.delivery' | t }}</h2>
+        <div class="opts">
+          <label class="opt card" [class.on]="delivery() === 'courier'">
+            <input type="radio" name="delivery" value="courier" [checked]="delivery() === 'courier'" (change)="delivery.set('courier')" />
+            <span><b>{{ 'co.courier' | t }}</b>
+              <small>{{ deliveryCostFor('courier') }} · {{ 'co.courier_hint' | t }} {{ (options()?.free_from ?? 50000) | kzt }}</small></span>
+          </label>
+          <label class="opt card" [class.on]="delivery() === 'pickup'">
+            <input type="radio" name="delivery" value="pickup" [checked]="delivery() === 'pickup'" (change)="delivery.set('pickup')" />
+            <span><b>{{ 'co.pickup' | t }}</b><small>{{ 'co.free' | t }} · {{ options()?.pickup_address }}</small></span>
+          </label>
+        </div>
+
+        <div class="card details">
+          <h3>{{ (delivery() === 'courier' ? 'co.where' : 'co.contact') | t }}</h3>
+          <div class="fields">
+            <label>{{ 'cart.phone' | t }}<input type="tel" name="phone" [(ngModel)]="phone" placeholder="+7 701 234 56 78" /></label>
+            @if (delivery() === 'courier') {
+              <label class="wide">{{ 'cart.address' | t }}<input type="text" name="address" [(ngModel)]="address" placeholder="Almaty, Abay avenue 128, apt 24" /></label>
+            }
           </div>
+          <p class="note">{{ 'co.call_note' | t }}</p>
+        </div>
 
-          <label>{{ 'co.comment' | t }}<input type="text" name="comment" [(ngModel)]="comment" maxlength="500" [placeholder]="'co.comment_ph' | t" /></label>
+        <!-- 2. payment -->
+        <h2 class="step">2. {{ 'co.payment' | t }}</h2>
+        <div class="opts three">
+          <label class="opt card" [class.on]="payment === 'kaspi'">
+            <input type="radio" name="payment" value="kaspi" [(ngModel)]="payment" />
+            <span><b>{{ 'co.kaspi' | t }}</b><small>{{ 'co.kaspi_hint' | t }}</small></span>
+          </label>
+          <label class="opt card" [class.on]="payment === 'card'">
+            <input type="radio" name="payment" value="card" [(ngModel)]="payment" />
+            <span><b>{{ 'co.card' | t }}</b><small>{{ 'co.card_hint' | t }}</small></span>
+          </label>
+          <label class="opt card" [class.on]="payment === 'cash'">
+            <input type="radio" name="payment" value="cash" [(ngModel)]="payment" />
+            <span><b>{{ 'co.cash' | t }}</b><small>{{ 'co.cash_hint' | t }}</small></span>
+          </label>
+        </div>
 
-          <!-- 3. totals -->
-          <dl class="totals">
-            <div><dt>{{ 'co.items' | t }} ({{ cart.count() }})</dt><dd>{{ itemsTotal() | kzt }}</dd></div>
-            <div><dt>{{ 'co.delivery' | t }}</dt><dd>{{ deliveryCost() ? (deliveryCost() | kzt) : ('co.free' | t) }}</dd></div>
-            @if (toFree() > 0) { <p class="hint">{{ 'co.add_for_free' | t }} {{ toFree() | kzt }}</p> }
-            <div class="grand"><dt>{{ 'cart.total' | t }}</dt><dd>{{ itemsTotal() + deliveryCost() | kzt }}</dd></div>
-          </dl>
+        <div class="card details">
+          <label>{{ 'co.comment' | t }}
+            <textarea name="comment" rows="3" [(ngModel)]="comment" maxlength="500" [placeholder]="'co.comment_ph' | t"></textarea>
+          </label>
+        </div>
+        }
+      </div>
 
-          @if (error()) { <div class="error-text">{{ error() }}</div> }
-          <button class="btn block" type="submit" [disabled]="!canPlace() || placing()">
-            {{ payment === 'card' ? ('co.place_and_pay' | t) : ('cart.place_order' | t) }}
-          </button>
-        </form>
+      <!-- 3. totals -->
+      <aside class="card summary">
+        <h3>{{ 'co.summary' | t }}</h3>
+        <dl class="totals">
+          <div><dt>{{ 'co.items' | t }} ({{ cart.count() }})</dt><dd>{{ itemsTotal() | kzt }}</dd></div>
+          <div><dt>{{ 'co.delivery' | t }} · {{ (delivery() === 'courier' ? 'co.courier' : 'co.pickup') | t }}</dt>
+            <dd>{{ deliveryCost() ? (deliveryCost() | kzt) : ('co.free' | t) }}</dd></div>
+          <div class="grand"><dt>{{ 'cart.total' | t }}</dt><dd>{{ itemsTotal() + deliveryCost() | kzt }}</dd></div>
+        </dl>
+        @if (error()) { <div class="error-text">{{ error() }}</div> }
+        @if (!auth.isLoggedIn()) {
+          <!-- guest cart: sign in (or register) to check out; the items move to the account -->
+          <p class="small">{{ 'cart.guest_hint' | t }}</p>
+          <a class="btn block" routerLink="/login" [queryParams]="{ next: '/cart' }">{{ 'cart.guest_login' | t }} →</a>
+          <a class="btn ghost block" routerLink="/register" [queryParams]="{ next: '/cart' }">{{ 'cart.guest_register' | t }}</a>
+        } @else {
+        <button class="btn block" type="submit" [disabled]="!canPlace() || placing()">
+          {{ payment !== 'cash' ? ('co.place_and_pay' | t) : ('cart.place_order' | t) }} →
+        </button>
+        @if (!canPlace()) { <p class="small">{{ (delivery() === 'courier' ? 'co.need_phone_address' : 'co.need_phone') | t }}</p> }
+        @if (payment !== 'cash') { <p class="small">{{ 'co.demo_payment' | t }}</p> }
+        }
       </aside>
-    </div>
+    </form>
   }
 </div>

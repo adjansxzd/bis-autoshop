@@ -5,11 +5,12 @@ import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
 import { RegisterData } from '../../core/models';
 import { TPipe } from '../../shared/t.pipe';
+import { GoogleButton } from '../../components/google-button/google-button';
 
 /** POST /api/auth/register/ — on success the user is signed in and sent back to where they came from. */
 @Component({
   selector: 'app-register',
-  imports: [FormsModule, RouterLink, TPipe],
+  imports: [FormsModule, RouterLink, TPipe, GoogleButton],
   template: `
     <div class="container wrap">
       <form class="card box" (ngSubmit)="submit()" #f="ngForm" novalidate>
@@ -56,6 +57,7 @@ import { TPipe } from '../../shared/t.pipe';
         @if (errors()['non_field_errors']) { <div class="error-text">{{ errors()['non_field_errors'] }}</div> }
 
         <button class="btn block" type="submit" [disabled]="busy() || !f.valid || mismatch()">{{ 'reg.submit' | t }}</button>
+        <app-google-button [next]="next()" />
         <p class="alt">{{ 'reg.have_account' | t }} <a routerLink="/login" [queryParams]="{ next: next() }">{{ 'nav.login' | t }}</a></p>
       </form>
     </div>

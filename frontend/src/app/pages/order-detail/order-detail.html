@@ -7,9 +7,8 @@
     <!-- confirmation right after checkout -->
     @if (showThanks() && o.status !== 'cancelled') {
       <div class="card thanks">
-        <div class="tick">✓</div>
         <div>
-          <h2>{{ 'od.thanks' | t }} #{{ o.id }}</h2>
+          <h2>✓ {{ 'od.thanks' | t }} #{{ o.id }}</h2>
           <p>{{ o.can_pay ? ('od.thanks_pay' | t) : (o.delivery_method === 'pickup' ? ('od.thanks_pickup' | t) : ('od.thanks_courier' | t)) }}</p>
         </div>
       </div>
@@ -18,7 +17,7 @@
     <header class="head">
       <div>
         <h1>{{ 'orders.order' | t }} #{{ o.id }}</h1>
-        <p class="muted">{{ o.created_at | date: 'dd.MM.yyyy HH:mm' }}</p>
+        <p class="muted">{{ 'od.placed_on' | t }} {{ o.created_at | date: 'dd.MM.yyyy · HH:mm' }}</p>
       </div>
       <span class="status" [attr.data-s]="o.status">{{ statusKey(o, o.status) | t }}</span>
     </header>
@@ -28,8 +27,8 @@
       <ol>
         @for (s of steps(); track s.status; let last = $last) {
           <li [class.done]="s.done">
-            <span class="dot">@if (s.done) { ✓ }</span>
-            <b>{{ statusKey(o, s.status) | t }}</b>
+            <i class="bar"></i>
+            <b>{{ s.done ? '✓' : $index + 1 }}&nbsp; {{ statusKey(o, s.status) | t }}</b>
             <small>{{ s.at ? (s.at | date: 'dd.MM HH:mm') : '' }}</small>
           </li>
         }
@@ -77,7 +76,21 @@
         <!-- actions -->
         @if (o.can_pay || o.can_cancel || o.status !== 'new') {
           <section class="card box actions">
-            @if (o.can_pay) {
+            @if (o.can_pay && o.payment_method === 'kaspi') {
+              <!-- demo Kaspi QR: the code holds only order number + amount -->
+              <div class="kaspi">
+                <b>{{ 'kaspi.title' | t }}</b>
+                <app-kaspi-qr [text]="'AUTOSHOP-DEMO order=' + o.id + ' amount=' + o.total + ' KZT'" />
+                <div class="kaspi-sum">{{ o.total | kzt }}</div>
+                <ol>
+                  <li>{{ 'kaspi.step1' | t }}</li>
+                  <li>{{ 'kaspi.step2' | t }}</li>
+                  <li>{{ 'kaspi.step3' | t }}</li>
+                </ol>
+                <p class="muted small">{{ 'kaspi.demo' | t }}</p>
+              </div>
+              <button class="btn block" (click)="pay()" [disabled]="busy()">{{ 'kaspi.paid' | t }}</button>
+            } @else if (o.can_pay) {
               <p class="muted small">{{ 'od.pay_hint' | t }}</p>
               <button class="btn block" (click)="pay()" [disabled]="busy()">{{ 'od.pay' | t }} {{ o.total | kzt }}</button>
             }
@@ -109,10 +122,10 @@
           <p><b>{{ (o.delivery_method === 'pickup' ? 'co.pickup' : 'co.courier') | t }}</b><br />{{ o.shipping_address }}<br />{{ o.phone }}</p>
           @if (o.comment) { <p class="muted small">“{{ o.comment }}”</p> }
           <h3>{{ 'co.payment' | t }}</h3>
-          <p><b>{{ (o.payment_method === 'card' ? 'co.card' : 'co.cash') | t }}</b><br />
+          <p><b>{{ ('co.' + o.payment_method) | t }}</b><br />
             @if (o.paid_at) { <span class="ok">✓ {{ 'od.paid_at' | t }} {{ o.paid_at | date: 'dd.MM.yyyy HH:mm' }}</span> }
             @else if (o.status === 'cancelled') { <span class="muted">—</span> }
-            @else { <span class="muted">{{ o.payment_method === 'card' ? ('od.not_paid' | t) : ('od.pay_on_delivery' | t) }}</span> }
+            @else { <span class="muted">{{ o.payment_method !== 'cash' ? ('od.not_paid' | t) : ('od.pay_on_delivery' | t) }}</span> }
           </p>
         </section>
       </aside>

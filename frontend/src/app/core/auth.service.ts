@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { Observable, map, tap } from 'rxjs';
+import { Observable, finalize, map, shareReplay, tap } from 'rxjs';
 
 import { environment } from '../../environments/environment';
 import { RegisterData, User } from './models';
@@ -55,14 +55,39 @@ export class AuthService {
     );
   }
 
-  /** Exchange the refresh token for a new access token (used by the interceptor). */
+  /** "Sign in with Google": GET /api/auth/google/config/ → client ID ("" = switched off on the server) */
+  googleClientId(): Observable<string> {
+    return this.http.get<{ client_id: string }>(`${this.base}/auth/google/config/`).pipe(map((r) => r.client_id));
+  }
+
+  /** POST /api/auth/google/ — the server checks Google's ID token and returns our own JWT tokens */
+  googleLogin(credential: string): Observable<User> {
+    return this.http.post<Tokens & { user: User }>(`${this.base}/auth/google/`, { credential }).pipe(
+      tap((res) => this.start(res)),
+      map((res) => res.user),
+    );
+  }
+
+  private refreshing: Observable<string> | null = null;
+
+  /**
+   * Exchange the refresh token for a new access token (used by the interceptor).
+   * Several requests can fail with 401 at the same moment: they all share ONE refresh call,
+   * because the server rotates refresh tokens (an old one can be used only once).
+   */
   refresh(): Observable<string> {
-    return this.http
+    this.refreshing ??= this.http
       .post<Tokens>(`${this.base}/auth/refresh/`, { refresh: this.refreshToken })
       .pipe(
-        tap((t) => write(ACCESS_KEY, t.access)),
+        tap((t) => {
+          write(ACCESS_KEY, t.access);
+          if (t.refresh) write(REFRESH_KEY, t.refresh);
+        }),
         map((t) => t.access),
+        finalize(() => (this.refreshing = null)),
+        shareReplay(1),
       );
+    return this.refreshing;
   }
 
   updateProfile(changes: Partial<User>): Observable<User> {
@@ -74,6 +99,9 @@ export class AuthService {
   }
 
   logout() {
+    // tell the server to blacklist the refresh token (best effort), then forget both tokens
+    const refresh = this.refreshToken;
+    if (refresh) this.http.post(`${this.base}/auth/logout/`, { refresh }).subscribe({ error: () => {} });
     write(ACCESS_KEY, null);
     write(REFRESH_KEY, null);
     this.user.set(null);

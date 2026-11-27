@@ -52,6 +52,7 @@ class ProductAdmin(admin.ModelAdmin):
         ("Русский", {"fields": ("name_ru", "description_ru")}),
         ("Fitment", {"fields": ("compatible_cars",), "description": "Cars this part fits ('Fits my car' filter)."}),
         ("Photo", {"fields": ("image", "photo_preview")}),
+        ("3D model", {"fields": ("model_3d",), "description": "Optional .glb file — customers can rotate it on the product page."}),
         ("Details", {"fields": ("oem_numbers", "specs"),
                      "description": 'Specs: [{"en": "Diameter", "ru": "Диаметр", "value": "296 mm"}, ...]'}),
     )
